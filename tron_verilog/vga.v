@@ -15,6 +15,12 @@ reg [10:0] ver_reg;
 reg ver_sync;
 wire ver_max = (ver_reg == 524);
 
+//reg vga_clock = 1'b0;
+//
+//always @ (posedge CLOCK) begin
+//	vga_clock <= ~vga_clock;
+//end
+
 always @ (posedge CLOCK) begin
 	
 	if (hor_max) begin

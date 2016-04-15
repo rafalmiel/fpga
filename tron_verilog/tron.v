@@ -1,5 +1,7 @@
 module tron (
 	input CLOCK_50,
+	input TURN_LEFT,
+	input TURN_RIGHT,
 	output VGA_RED,
 	output VGA_GREEN,
 	output VGA_BLUE,
@@ -8,7 +10,6 @@ module tron (
 );
 
 // CLOCKS
-wire game_clock;
 wire ram_clock;
 wire vga_clock;
 
@@ -19,15 +20,11 @@ wire is_drawing;
 
 // RAM DATA
 wire [18:0] ram_read_address;
-reg  [18:0] ram_write_address = 0;
-reg ram_write_enabled = 1'b1;
-reg ram_write_data = 1'b1;
+wire [18:0] ram_write_address;
+wire ram_write_enabled;
+wire ram_write_data;
 wire ram_read_data;
 
-// GAME DATA
-reg [18:0] cnt = 0;
-
-always ram_write_address = cnt;
 assign ram_read_address = (phys_x+phys_y*640);
 
 assign VGA_RED = is_drawing & ram_read_data;
@@ -40,18 +37,13 @@ pll p(
 	.c1(vga_clock)
 );
 
-always @ (posedge game_clock) begin
-	if (cnt == 307199) begin
-		cnt <= 0;
-		ram_write_data <= ~ram_write_data;
-	end else begin
-		cnt <= cnt + 1;
-	end
-end
-
-scaler sc (
-	.clock_50mhz(CLOCK_50),
-	.clock_hz(game_clock)
+game_logic log (
+	.clock(CLOCK_50),
+	.turn_left(TURN_LEFT),
+	.turn_right(TURN_RIGHT),
+	.ram_write_address(ram_write_address),
+	.ram_write_data(ram_write_data),
+	.ram_write_enabled(ram_write_enabled)
 );
 
 bigram ram(

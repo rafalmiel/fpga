@@ -1,29 +1,20 @@
 module scaler (
 	input clock_50mhz,
-	output reg clock_hz
+	output clock_hz
 );
 
-parameter reset_cnt = 150000;
+parameter reset_cnt = 1500000;
 
-reg [31:0] mhz;
+reg [31:0] mhz = 0;
+reg clock = 1'b0;
 
-initial begin
-	mhz <= 0;
-end
+assign clock_hz = (mhz == reset_cnt-1) ? ~clock : clock;
 
 always @(posedge clock_50mhz) begin
 	if (mhz == reset_cnt) begin
 		mhz <= 0;
 	end else begin
 		mhz <= mhz + 1;
-	end
-end
-
-always @(posedge clock_50mhz) begin
-	if (mhz == reset_cnt-1) begin
-		clock_hz <= ~clock_hz;
-	end else begin
-		clock_hz <= clock_hz;
 	end
 end
 
