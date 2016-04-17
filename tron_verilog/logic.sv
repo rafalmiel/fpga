@@ -2,12 +2,13 @@ import tron_types::*;
 
 module game_logic (
 	input clock,
-	input dir_change,
 	input dir_t dir,
 	
 	output [18:0] ram_write_address,
 	output ram_write_data,
-	output ram_write_enabled
+	output ram_write_enabled,
+	
+	output led
 );
 
 typedef enum {WAIT, MOVE, CHECK} State;
@@ -19,14 +20,14 @@ reg [10:0] x1 = 10;
 reg [10:0] y1 = 400;
 reg [31:0] count = 0;
 
+assign led = (dir1 == RIGHT);
+
 always @ (posedge clock) begin
-	if (dir_change) begin
-		if ((dir1 == UP && dir != DOWN) 
-			|| (dir1 == DOWN && dir != UP) 
-			|| (dir1 == RIGHT && dir != LEFT) 
-			|| (dir1 == LEFT && dir != RIGHT))
-			dir1 <= dir;
-	end
+	if ((dir1 == UP && dir != DOWN) 
+		|| (dir1 == DOWN && dir != UP) 
+		|| (dir1 == RIGHT && dir != LEFT) 
+		|| (dir1 == LEFT && dir != RIGHT))
+		dir1 <= dir;
 end
 
 always @ (posedge clock) begin

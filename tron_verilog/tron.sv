@@ -30,14 +30,17 @@ wire ram_write_data;
 wire ram_read_data;
 
 wire ps2_code_new;
-reg [3:0] ps2_is_break;
+reg [1:0] ps2_code_new_state = 2'b00;
+wire ps2_code_new_int;
+reg ps2_is_break;
 wire [7:0] ps2_code;
-wire dir_change;
-dir_t dir;
+dir_t dir = RIGHT;
 
 assign VGA_RED = is_drawing & ram_read_data;
 assign VGA_GREEN = is_drawing & ram_read_data;
 assign VGA_BLUE = is_drawing & ram_read_data;
+
+assign ps2_code_new_int = (^ps2_code_new_state) & ps2_code_new_state[0];
 
 always @ (posedge CLOCK_50) begin
 	if (is_drawing) begin
@@ -46,36 +49,29 @@ always @ (posedge CLOCK_50) begin
 end
 
 always @ (posedge CLOCK_50) begin
-	if (ps2_code_new) begin
+	ps2_code_new_state = {ps2_code_new_state[0], ps2_code_new};
+end
+
+always @ (posedge CLOCK_50) begin
+	if (ps2_code_new_int) begin
 		if (ps2_code == 8'hF0) begin
-			ps2_is_break <= ps2_is_break + 1;
-			dir_change <= 1'b0;
-			led <= 1'b1;
+			ps2_is_break <= 1'b1;
 		end else begin
-			led <= 1'b0;
-			if (ps2_is_break > 0) begin
-				ps2_is_break <= ps2_is_break - 1;
-				dir_change <= 1'b0;
-			end else begin		
+			if (ps2_is_break) begin
+				ps2_is_break <= 1'b0;
+			end else begin	
 				if (ps2_code == 8'h1D) begin
 					dir <= UP;
-					dir_change <= 1'b1;
 				end else if (ps2_code == 8'h1B) begin
 					dir <= DOWN;
-					dir_change <= 1'b1;
 				end else if (ps2_code == 8'h1C) begin
 					dir <= LEFT;
-					dir_change <= 1'b1;
 				end else if (ps2_code == 8'h23) begin
 					dir <= RIGHT;
-					dir_change <= 1'b1;
-				end else begin
-					dir_change <= 1'b0;
 				end
 			end
 		end
-	end else 
-		dir_change <= 1'b0;
+	end
 end
 
 pll p(
@@ -86,11 +82,11 @@ pll p(
 
 game_logic log (
 	.clock(CLOCK_50),
-	.dir_change(dir_change),
 	.dir(dir),
 	.ram_write_address(ram_write_address),
 	.ram_write_data(ram_write_data),
-	.ram_write_enabled(ram_write_enabled)
+	.ram_write_enabled(ram_write_enabled),
+	.led(led)
 );
 
 bigram ram(
