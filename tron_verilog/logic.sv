@@ -158,22 +158,46 @@ end
 always @ (posedge clock) begin
 	if (state == UPDATE_POS && update_pos_done == 1'b0) begin
 		if (dir1 == UP)
-			y1 <= y1 - 1;
+			if (y1 == 0)
+				y1 <= 239;
+			else
+				y1 <= y1 - 1;
 		else if (dir1 == RIGHT)
-			x1 <= x1 + 1;
+			if (x1 == 319)
+				x1 <= 0;
+			else
+				x1 <= x1 + 1;
 		else if (dir1 == DOWN)
-			y1 <= y1 + 1;
+			if (y1 == 239)
+				y1 <= 0;
+			else
+				y1 <= y1 + 1;
 		else
-			x1 <= x1 - 1;
+			if (x1 == 0)
+				x1 <= 319;
+			else
+				x1 <= x1 - 1;
 			
 		if (dir2 == UP)
-			y2 <= y2 - 1;
+			if (y2 == 0)
+				y2 <= 239;
+			else
+				y2 <= y2 - 1;
 		else if (dir2 == RIGHT)
-			x2 <= x2 + 1;
+			if (x2 == 319)
+				x2 <= 0;
+			else
+				x2 <= x2 + 1;
 		else if (dir2 == DOWN)
-			y2 <= y2 + 1;
+			if (y2 == 239)
+				y2 <= 0;
+			else
+				y2 <= y2 + 1;
 		else
-			x2 <= x2 - 1;
+			if (x2 == 0)
+				x2 <= 319;
+			else
+				x2 <= x2 - 1;
 
 		update_pos_done <= 1'b1;
 	end else begin
@@ -193,7 +217,7 @@ end
 
 always @ (posedge clock) begin
 	if (state == CHECK_DATA1 && check_data1_done == 1'b0) begin
-		if (ram_read_data != 2'b00 || x1 == 0 || x1 == 319 || y1 == 0 || y1 == 239)
+		if (ram_read_data != 2'b00/* || x1 == 0 || x1 == 320 || y1 == 0 || y1 == 240*/)
 			is_crash <= 1'b1;
 		else
 			is_crash <= 1'b0;
@@ -204,7 +228,7 @@ always @ (posedge clock) begin
 	end
 	
 	if (state == CHECK_DATA2 && check_data2_done == 1'b0) begin
-		if (ram_read_data != 2'b00 || x2 == 0 || x2 == 319 || y2 == 0 || y2 == 239)
+		if (ram_read_data != 2'b00/* || x2 == 0 || x2 == 320 || y2 == 0 || y2 == 240*/)
 			is_crash <= 1'b1;
 		else
 			is_crash <= 1'b0;
