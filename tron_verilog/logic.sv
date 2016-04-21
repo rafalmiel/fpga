@@ -28,16 +28,18 @@ reg [18:0] address;
 reg [1:0] write_data;
 
 reg tick = 1'b0;
+
 reg reset_done = 1'b0;
 reg reset_pos_done = 1'b0;
 reg update_pos_done = 1'b0;
-reg check1_done = 1'b0;
+
 reg check_data1_done = 1'b0;
-reg move1_done = 1'b0;
-reg check2_done = 1'b0;
 reg check_data2_done = 1'b0;
-reg move2_done = 1'b0;
+
 reg is_crash = 1'b0;
+
+reg was_turn1 = 1'b0;
+reg was_turn2 = 1'b0;
 
 assign ram_write_enabled = write_enabled;
 assign ram_address = address;
@@ -113,23 +115,34 @@ always @ (posedge clock) begin
 end
 
 always @ (posedge clock) begin
+	if (tick)
+		was_turn1 <= 1'b0;
+
 	if (state == RESET) begin
 		dir1 <= RIGHT;
-	end else if ((dir1 == UP && d1 != DOWN) 
+		was_turn1 <= 1'b0;
+	end else if (~was_turn1 && ((dir1 == UP && d1 != DOWN) 
 		|| (dir1 == DOWN && d1 != UP) 
 		|| (dir1 == RIGHT && d1 != LEFT) 
-		|| (dir1 == LEFT && d1 != RIGHT))
+		|| (dir1 == LEFT && d1 != RIGHT))) begin
 		dir1 <= d1;
+		was_turn1 <= 1'b1;
+	end
 end
 
 always @ (posedge clock) begin
+	if (tick)
+		was_turn2 <= 1'b0;
+
 	if (state == RESET) begin
 		dir2 <= LEFT;
-	end else if ((dir2 == UP && d2 != DOWN) 
+	end else if (~was_turn2 && ((dir2 == UP && d2 != DOWN) 
 		|| (dir2 == DOWN && d2 != UP) 
 		|| (dir2 == RIGHT && d2 != LEFT) 
-		|| (dir2 == LEFT && d2 != RIGHT))
+		|| (dir2 == LEFT && d2 != RIGHT))) begin
 		dir2 <= d2;
+		was_turn2 <= 1'b1;
+	end
 end
 
 always @ (posedge clock) begin
