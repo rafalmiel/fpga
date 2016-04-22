@@ -18,7 +18,7 @@ State state = RESET;
 
 reg [10:0] x1 = 20;
 reg [10:0] y1 = 120;
-reg [10:0] x2 = 300;
+reg [10:0] x2 = 301;
 reg [10:0] y2 = 120;
 reg [10:0] xb = 0;
 reg [10:0] yb = 0;
@@ -37,7 +37,8 @@ reg reset_border_done = 1'b0;
 reg check_data1_done = 1'b0;
 reg check_data2_done = 1'b0;
 
-reg is_crash = 1'b0;
+reg is_crash1 = 1'b0;
+reg is_crash2 = 1'b0;
 
 reg was_turn1 = 1'b0;
 reg was_turn2 = 1'b0;
@@ -46,13 +47,18 @@ assign ram_write_enabled = write_enabled;
 assign ram_address = address;
 assign ram_write_data = write_data;
 
-always write_enabled = (state == MOVE1 || state == MOVE2 || state == RESET || state == RESET_BORDER) ? 1'b1 : 1'b0;
-always address = (state == CHECK1 || state == CHECK_DATA1 || state == MOVE1) ? (320*y1 + x1) 
+always write_enabled = (state == MOVE1 || state == MOVE2 || state == RESET || state == RESET_BORDER || state == GAME_WIN1 || state == GAME_WIN2) ? 1'b1 : 1'b0;
+always address = 
+			  (state == CHECK1 || state == CHECK_DATA1 || state == MOVE1) ? (320*y1 + x1) 
 			: (state == RESET) ? reset_address 
-			: (state == RESET_BORDER) ? (320*yb + xb) 
+			: (state == RESET_BORDER || state == GAME_WIN1 || state == GAME_WIN2) ? (320*yb + xb) 
 			: (320*y2 + x2);
 
-always write_data = (state == MOVE1) ? 2'b01 : (state == MOVE2) ? 2'b10 : (state == RESET_BORDER) ? 2'b11 : 2'b00;
+always write_data = 
+			  (state == MOVE1 || state == GAME_WIN2) ? 2'b01 
+			: (state == MOVE2 || state == GAME_WIN1) ? 2'b10 
+			: (state == RESET_BORDER) ? 2'b11 
+			: 2'b00;
 
 always @ (posedge clock) begin
 	if (reset && state != RESET) begin
@@ -88,30 +94,43 @@ always @ (posedge clock) begin
 			end
 			CHECK_DATA1: begin
 				if (check_data1_done) begin
-					if (is_crash)
-						state <= GAME_OVER;
-					else
-						state <= MOVE1;
+					state <= CHECK2;
 				end else
 					state <= CHECK_DATA1;
 			end
 			MOVE1: begin
-				state <= CHECK2;
+				state <= MOVE2;
 			end
 			CHECK2: begin
 				state <= CHECK_DATA2;
 			end
 			CHECK_DATA2: begin
 				if (check_data2_done) begin
-					if (is_crash)
+					if (is_crash1 && is_crash2)
 						state <= GAME_OVER;
+					else if (is_crash1)
+						state <= GAME_WIN2;
+					else if (is_crash2)
+						state <= GAME_WIN1;
 					else
-						state <= MOVE2;
+						state <= MOVE1;
 				end else
 					state <= CHECK_DATA2;
 			end
 			MOVE2: begin
 				state <= WAIT;
+			end
+			GAME_WIN1: begin
+				if (reset_border_done) 
+					state <= GAME_OVER;
+				else 
+					state <= GAME_WIN1;
+			end
+			GAME_WIN2: begin
+				if (reset_border_done) 
+					state <= GAME_OVER;
+				else 
+					state <= GAME_WIN2;
 			end
 			GAME_OVER: begin
 			end
@@ -192,9 +211,9 @@ end
 always @ (posedge clock) begin
 	if (state == CHECK_DATA1 && check_data1_done == 1'b0) begin
 		if (ram_read_data != 2'b00)
-			is_crash <= 1'b1;
+			is_crash1 <= 1'b1;
 		else
-			is_crash <= 1'b0;
+			is_crash1 <= 1'b0;
 
 		check_data1_done <= 1'b1;
 	end else begin
@@ -203,9 +222,9 @@ always @ (posedge clock) begin
 	
 	if (state == CHECK_DATA2 && check_data2_done == 1'b0) begin
 		if (ram_read_data != 2'b00)
-			is_crash <= 1'b1;
+			is_crash2 <= 1'b1;
 		else
-			is_crash <= 1'b0;
+			is_crash2 <= 1'b0;
 
 		check_data2_done <= 1'b1;
 	end else begin
@@ -216,6 +235,8 @@ end
 always @ (posedge clock) begin
 	if (state == RESET && reset_done == 1'b0) begin
 		if (reset_address == 76800-1) begin
+			xb <= 0;
+			yb <= 0;
 			reset_address <= 0;
 			reset_done <= 1'b1;
 		end else 
@@ -224,7 +245,7 @@ always @ (posedge clock) begin
 		reset_done <= 1'b0;
 	end
 	
-	if (state == RESET_BORDER) begin
+	if (state == RESET_BORDER || state == GAME_WIN1 || state == GAME_WIN2) begin
 		if (yb == 0 || yb == 239) begin
 			if (xb < 319) begin
 				xb <= xb + 1;
