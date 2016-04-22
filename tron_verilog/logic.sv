@@ -18,7 +18,7 @@ State state = RESET;
 
 reg [10:0] x1 = 20;
 reg [10:0] y1 = 120;
-reg [10:0] x2 = 301;
+reg [10:0] x2 = 299;
 reg [10:0] y2 = 120;
 reg [10:0] xb = 0;
 reg [10:0] yb = 0;
@@ -106,7 +106,7 @@ always @ (posedge clock) begin
 			end
 			CHECK_DATA2: begin
 				if (check_data2_done) begin
-					if (is_crash1 && is_crash2)
+					if ((is_crash1 && is_crash2) || (x1 == x2 && y1 == y2))
 						state <= GAME_OVER;
 					else if (is_crash1)
 						state <= GAME_WIN2;
@@ -203,7 +203,7 @@ always @ (posedge clock) begin
 	if (state == RESET_POS) begin
 		x1 <= 20;
 		y1 <= 120;
-		x2 <= 300;
+		x2 <= 299;
 		y2 <= 120;
 	end
 end
