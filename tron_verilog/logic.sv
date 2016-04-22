@@ -32,9 +32,7 @@ reg [1:0] write_data;
 reg tick = 1'b0;
 
 reg reset_done = 1'b0;
-reg reset_pos_done = 1'b0;
 reg reset_border_done = 1'b0;
-reg update_pos_done = 1'b0;
 
 reg check_data1_done = 1'b0;
 reg check_data2_done = 1'b0;
@@ -74,10 +72,7 @@ always @ (posedge clock) begin
 					state <= RESET_BORDER;
 			end
 			RESET_POS: begin
-				if (reset_pos_done) 
-					state <= WAIT;
-				else 
-					state <= RESET_POS;
+				state <= WAIT;
 			end
 			WAIT: begin
 				if (tick == 1'b1)
@@ -86,10 +81,7 @@ always @ (posedge clock) begin
 					state <= WAIT;
 			end
 			UPDATE_POS: begin
-				if (update_pos_done)
-					state <= CHECK1;
-				else
-					state <= UPDATE_POS;
+				state <= CHECK1;
 			end
 			CHECK1: begin
 				state <= CHECK_DATA1;
@@ -169,7 +161,7 @@ always @ (posedge clock) begin
 end
 
 always @ (posedge clock) begin
-	if (state == UPDATE_POS && update_pos_done == 1'b0) begin
+	if (state == UPDATE_POS) begin
 		if (dir1 == UP)
 			y1 <= y1 - 1;
 		else if (dir1 == RIGHT)
@@ -187,26 +179,19 @@ always @ (posedge clock) begin
 			y2 <= y2 + 1;
 		else
 			x2 <= x2 - 1;
-
-		update_pos_done <= 1'b1;
-	end else begin
-		update_pos_done <= 1'b0;
 	end
 	
-	if (state == RESET_POS && reset_pos_done == 1'b0) begin
+	if (state == RESET_POS) begin
 		x1 <= 20;
 		y1 <= 120;
 		x2 <= 300;
 		y2 <= 120;
-		reset_pos_done <= 1'b1;
-	end else begin
-		reset_pos_done <= 1'b0;
 	end
 end
 
 always @ (posedge clock) begin
 	if (state == CHECK_DATA1 && check_data1_done == 1'b0) begin
-		if (ram_read_data != 2'b00/* || x1 == 0 || x1 == 320 || y1 == 0 || y1 == 240*/)
+		if (ram_read_data != 2'b00)
 			is_crash <= 1'b1;
 		else
 			is_crash <= 1'b0;
@@ -217,7 +202,7 @@ always @ (posedge clock) begin
 	end
 	
 	if (state == CHECK_DATA2 && check_data2_done == 1'b0) begin
-		if (ram_read_data != 2'b00/* || x2 == 0 || x2 == 320 || y2 == 0 || y2 == 240*/)
+		if (ram_read_data != 2'b00)
 			is_crash <= 1'b1;
 		else
 			is_crash <= 1'b0;
