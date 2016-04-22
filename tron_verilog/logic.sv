@@ -14,12 +14,14 @@ module game_logic (
 
 dir_t dir1 = RIGHT;
 dir_t dir2 = LEFT;
-State state = WAIT;
+State state = RESET;
 
 reg [10:0] x1 = 20;
 reg [10:0] y1 = 120;
 reg [10:0] x2 = 300;
 reg [10:0] y2 = 120;
+reg [10:0] xb = 0;
+reg [10:0] yb = 0;
 reg [18:0] reset_address = 0;
 reg [31:0] count = 0;
 
@@ -31,6 +33,7 @@ reg tick = 1'b0;
 
 reg reset_done = 1'b0;
 reg reset_pos_done = 1'b0;
+reg reset_border_done = 1'b0;
 reg update_pos_done = 1'b0;
 
 reg check_data1_done = 1'b0;
@@ -45,9 +48,13 @@ assign ram_write_enabled = write_enabled;
 assign ram_address = address;
 assign ram_write_data = write_data;
 
-always write_enabled = (state == MOVE1 || state == MOVE2 || state == RESET) ? 1'b1 : 1'b0;
-always address = (state == CHECK1 || state == CHECK_DATA1 || state == MOVE1) ? (320*y1 + x1) : (state == RESET) ? reset_address : (320*y2 + x2);
-always write_data = (state == MOVE1) ? 2'b01 : (state == MOVE2) ? 2'b10 : 2'b00;
+always write_enabled = (state == MOVE1 || state == MOVE2 || state == RESET || state == RESET_BORDER) ? 1'b1 : 1'b0;
+always address = (state == CHECK1 || state == CHECK_DATA1 || state == MOVE1) ? (320*y1 + x1) 
+			: (state == RESET) ? reset_address 
+			: (state == RESET_BORDER) ? (320*yb + xb) 
+			: (320*y2 + x2);
+
+always write_data = (state == MOVE1) ? 2'b01 : (state == MOVE2) ? 2'b10 : (state == RESET_BORDER) ? 2'b11 : 2'b00;
 
 always @ (posedge clock) begin
 	if (reset && state != RESET) begin
@@ -56,9 +63,15 @@ always @ (posedge clock) begin
 		case (state)
 			RESET: begin
 				if (reset_done) 
-					state <= RESET_POS;
+					state <= RESET_BORDER;
 				else 
 					state <= RESET;
+			end
+			RESET_BORDER: begin
+				if (reset_border_done) 
+					state <= RESET_POS;
+				else 
+					state <= RESET_BORDER;
 			end
 			RESET_POS: begin
 				if (reset_pos_done) 
@@ -158,46 +171,22 @@ end
 always @ (posedge clock) begin
 	if (state == UPDATE_POS && update_pos_done == 1'b0) begin
 		if (dir1 == UP)
-			if (y1 == 0)
-				y1 <= 239;
-			else
-				y1 <= y1 - 1;
+			y1 <= y1 - 1;
 		else if (dir1 == RIGHT)
-			if (x1 == 319)
-				x1 <= 0;
-			else
-				x1 <= x1 + 1;
+			x1 <= x1 + 1;
 		else if (dir1 == DOWN)
-			if (y1 == 239)
-				y1 <= 0;
-			else
-				y1 <= y1 + 1;
+			y1 <= y1 + 1;
 		else
-			if (x1 == 0)
-				x1 <= 319;
-			else
-				x1 <= x1 - 1;
+			x1 <= x1 - 1;
 			
 		if (dir2 == UP)
-			if (y2 == 0)
-				y2 <= 239;
-			else
-				y2 <= y2 - 1;
+			y2 <= y2 - 1;
 		else if (dir2 == RIGHT)
-			if (x2 == 319)
-				x2 <= 0;
-			else
-				x2 <= x2 + 1;
+			x2 <= x2 + 1;
 		else if (dir2 == DOWN)
-			if (y2 == 239)
-				y2 <= 0;
-			else
-				y2 <= y2 + 1;
+			y2 <= y2 + 1;
 		else
-			if (x2 == 0)
-				x2 <= 319;
-			else
-				x2 <= x2 - 1;
+			x2 <= x2 - 1;
 
 		update_pos_done <= 1'b1;
 	end else begin
@@ -248,6 +237,32 @@ always @ (posedge clock) begin
 			reset_address <= reset_address + 1;
 	end else begin
 		reset_done <= 1'b0;
+	end
+	
+	if (state == RESET_BORDER) begin
+		if (yb == 0 || yb == 239) begin
+			if (xb < 319) begin
+				xb <= xb + 1;
+			end else begin
+				if (yb == 0) begin
+					yb <= yb + 1;
+					xb <= 0;
+				end else begin
+					yb <= 0;
+					xb <= 0;
+					reset_border_done <= 1'b1;
+				end
+			end
+		end else begin
+			if (xb == 0)
+				xb <= 319;
+			else begin
+				xb <= 0;
+				yb <= yb + 1;
+			end
+		end
+	end else begin
+		reset_border_done <= 1'b0;
 	end
 end
 

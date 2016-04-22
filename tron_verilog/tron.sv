@@ -40,9 +40,9 @@ wire [7:0] ps2_code;
 dir_t dir1 = RIGHT;
 dir_t dir2 = LEFT;
 
-assign VGA_RED = is_drawing & (vga_ram_read_data == 2'b01);
-assign VGA_GREEN = is_drawing & (vga_ram_read_data == 2'b10);
-assign VGA_BLUE = 1'b0;
+assign VGA_RED = is_drawing & (vga_ram_read_data == 2'b01 || vga_ram_read_data == 2'b11);
+assign VGA_GREEN = is_drawing & (vga_ram_read_data == 2'b10 || vga_ram_read_data == 2'b11);
+assign VGA_BLUE = is_drawing & (vga_ram_read_data == 2'b11);
 
 wire reset;
 
