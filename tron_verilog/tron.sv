@@ -35,6 +35,7 @@ wire ps2_code_new;
 reg [1:0] ps2_code_new_state = 2'b00;
 wire ps2_code_new_int;
 reg ps2_is_break;
+reg ps2_is_ext;
 wire [7:0] ps2_code;
 dir_t dir1 = RIGHT;
 dir_t dir2 = LEFT;
@@ -60,27 +61,30 @@ always @ (posedge CLOCK_50) begin
 	if (ps2_code_new_int) begin
 		if (ps2_code == 8'hF0) begin
 			ps2_is_break <= 1'b1;
+		end else if (ps2_code == 8'hE0) begin
+			ps2_is_ext <= 1'b1;
 		end else begin
+			ps2_is_ext <= 1'b0;
 			if (ps2_is_break) begin
 				ps2_is_break <= 1'b0;
 			end else begin	
 				if (ps2_code == 8'h1D) begin
 					dir1 <= UP;
-				end else if (ps2_code == 8'h1B) begin
+				end else if (ps2_code == 8'h1B && ~ps2_is_ext) begin
 					dir1 <= DOWN;
-				end else if (ps2_code == 8'h1C) begin
+				end else if (ps2_code == 8'h1C && ~ps2_is_ext) begin
 					dir1 <= LEFT;
-				end else if (ps2_code == 8'h23) begin
+				end else if (ps2_code == 8'h23 && ~ps2_is_ext) begin
 					dir1 <= RIGHT;
-				end else if (ps2_code == 8'h4D) begin
+				end else if (ps2_code == 8'h75 && ps2_is_ext) begin
 					dir2 <= UP;
-				end else if (ps2_code == 8'h4C) begin
+				end else if (ps2_code == 8'h72 && ps2_is_ext) begin
 					dir2 <= DOWN;
-				end else if (ps2_code == 8'h4B) begin
+				end else if (ps2_code == 8'h6B && ps2_is_ext) begin
 					dir2 <= LEFT;
-				end else if (ps2_code == 8'h52) begin
+				end else if (ps2_code == 8'h74 && ps2_is_ext) begin
 					dir2 <= RIGHT;
-				end else if (ps2_code == 8'h29) begin
+				end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin
 					dir1 <= RIGHT;
 					dir2 <= LEFT;
 				end
