@@ -22,7 +22,6 @@ reg [10:0] x2 = 299;
 reg [10:0] y2 = 120;
 reg [10:0] xb = 0;
 reg [10:0] yb = 0;
-reg [18:0] reset_address = 0;
 reg [31:0] count = 0;
 
 reg write_enabled;
@@ -43,21 +42,31 @@ reg is_crash2 = 1'b0;
 reg was_turn1 = 1'b0;
 reg was_turn2 = 1'b0;
 
+reg reset_line_read = 1'b1;
+reg reset_line_write = 1'b0;
+
+reg [1:0] player_count = 2;
+
+typedef enum logic [1:0] {GL_READ_DATA=2'b00, GL_CHECK_DATA=2'b01, GL_UPDATE_POS=2'b10} GameLostState;
+GameLostState game_lost_state = GL_READ_DATA;
+
+
 assign ram_write_enabled = write_enabled;
 assign ram_address = address;
 assign ram_write_data = write_data;
 
-always write_enabled = (state == MOVE1 || state == MOVE2 || state == RESET || state == RESET_BORDER || state == GAME_WIN1 || state == GAME_WIN2) ? 1'b1 : 1'b0;
+always write_enabled =    ((state == MOVE1 && ~is_crash1) || (state == MOVE2 && ~is_crash2) || state == RESET || state == RESET_BORDER) ? 1'b1 
+								: (state == GAME_LOST1 && game_lost_state == GL_UPDATE_POS && reset_line_write) ? 1'b1
+								: (state == GAME_LOST2 && game_lost_state == GL_UPDATE_POS && reset_line_write) ? 1'b1 : 1'b0;
 always address = 
 			  (state == CHECK1 || state == CHECK_DATA1 || state == MOVE1) ? (320*y1 + x1) 
-			: (state == RESET) ? reset_address 
-			: (state == RESET_BORDER || state == GAME_WIN1 || state == GAME_WIN2) ? (320*yb + xb) 
+			: (state == RESET || state == RESET_BORDER || state == GAME_LOST1 || state == GAME_LOST2) ? (320*yb + xb) 
 			: (320*y2 + x2);
 
 always write_data = 
-			  (state == MOVE1 || state == GAME_WIN2) ? 2'b01 
-			: (state == MOVE2 || state == GAME_WIN1) ? 2'b10 
-			: (state == RESET_BORDER) ? 2'b11 
+			  (state == MOVE1) ? 2'b01 
+			: (state == MOVE2) ? 2'b10
+			: (state == RESET_BORDER) ? 2'b11
 			: 2'b00;
 
 always @ (posedge clock or posedge reset) begin
@@ -81,7 +90,9 @@ always @ (posedge clock or posedge reset) begin
 				state <= WAIT;
 			end
 			WAIT: begin
-				if (tick == 1'b1)
+				if (player_count < 2)
+					state <= GAME_OVER;
+				else if (tick == 1'b1)
 					state <= UPDATE_POS;
 				else
 					state <= WAIT;
@@ -99,38 +110,37 @@ always @ (posedge clock or posedge reset) begin
 					state <= CHECK_DATA1;
 			end
 			MOVE1: begin
-				state <= MOVE2;
+				if (is_crash1)
+					state <= GAME_LOST1;
+				else
+					state <= MOVE2;
 			end
 			CHECK2: begin
 				state <= CHECK_DATA2;
 			end
 			CHECK_DATA2: begin
 				if (check_data2_done) begin
-					if ((is_crash1 && is_crash2) || (x1 == x2 && y1 == y2))
-						state <= GAME_OVER;
-					else if (is_crash1)
-						state <= GAME_WIN2;
-					else if (is_crash2)
-						state <= GAME_WIN1;
-					else
 						state <= MOVE1;
 				end else
 					state <= CHECK_DATA2;
 			end
 			MOVE2: begin
-				state <= WAIT;
+				if (is_crash2)
+					state <= GAME_LOST2;
+				else
+					state <= WAIT;
 			end
-			GAME_WIN1: begin
-				if (reset_border_done) 
+			GAME_LOST1: begin
+				if (reset_done) 
+					state <= MOVE2;
+				else 
+					state <= GAME_LOST1;
+			end
+			GAME_LOST2: begin
+				if (reset_done) 
 					state <= GAME_OVER;
 				else 
-					state <= GAME_WIN1;
-			end
-			GAME_WIN2: begin
-				if (reset_border_done) 
-					state <= GAME_OVER;
-				else 
-					state <= GAME_WIN2;
+					state <= GAME_LOST2;
 			end
 			GAME_OVER: begin
 				state <= GAME_OVER;
@@ -210,11 +220,21 @@ always @ (posedge clock) begin
 end
 
 always @ (posedge clock) begin
+	if (state == RESET) begin
+		player_count <= 2;
+	end
+
 	if (state == CHECK_DATA1 && check_data1_done == 1'b0) begin
-		if (ram_read_data != 2'b00)
+		if (ram_read_data != 2'b00) begin
 			is_crash1 <= 1'b1;
-		else
+			player_count <= player_count - 1;
+		end else
 			is_crash1 <= 1'b0;
+		
+		if (x1 == x2 && y1 == y2) begin
+			is_crash1 <= 1'b1;
+			player_count <= player_count - 1;
+		end
 
 		check_data1_done <= 1'b1;
 	end else begin
@@ -222,10 +242,16 @@ always @ (posedge clock) begin
 	end
 	
 	if (state == CHECK_DATA2 && check_data2_done == 1'b0) begin
-		if (ram_read_data != 2'b00)
+		if (ram_read_data != 2'b00) begin
 			is_crash2 <= 1'b1;
-		else
+			player_count <= player_count - 1;
+		end else
 			is_crash2 <= 1'b0;
+
+		if (x2 == x1 && y2 == y1) begin
+			is_crash1 <= 1'b1;
+			player_count <= player_count - 1;
+		end
 
 		check_data2_done <= 1'b1;
 	end else begin
@@ -234,19 +260,51 @@ always @ (posedge clock) begin
 end
 
 always @ (posedge clock) begin
-	if (state == RESET && reset_done == 1'b0) begin
-		if (reset_address == 76800-1) begin
+	if (state == GAME_LOST1 || state == GAME_LOST2) begin				
+		if (game_lost_state == GL_CHECK_DATA) begin 
+			case (state)
+				GAME_LOST1: begin
+					if (ram_read_data == 2'b01) begin
+						reset_line_write <= 1'b1;
+					end else begin
+						reset_line_write <= 1'b0;
+					end
+				end
+				GAME_LOST2: begin
+					if (ram_read_data == 2'b10) begin
+						reset_line_write <= 1'b1;
+					end else begin
+						reset_line_write <= 1'b0;
+					end
+				end
+			endcase
+			
+			game_lost_state <= GL_UPDATE_POS;
+		end else
+			game_lost_state <= GL_CHECK_DATA;
+	end
+
+	if ((state == RESET || ((state == GAME_LOST1 || state == GAME_LOST2) && game_lost_state == GL_UPDATE_POS)) 
+		&& reset_done == 1'b0) begin
+		if (xb == 319) begin
 			xb <= 0;
-			yb <= 0;
-			reset_address <= 0;
-			reset_done <= 1'b1;
-		end else 
-			reset_address <= reset_address + 1;
+			if (yb == 239) begin
+				yb <= 0;
+				game_lost_state <= GL_READ_DATA;
+				reset_line_write <= 1'b0;
+				reset_done <= 1'b1;
+			end else
+				yb <= yb + 1;
+		end else
+			xb <= xb + 1;
+			
+		if (state == GAME_LOST1 || state == GAME_LOST2)
+			game_lost_state <= GL_READ_DATA;
 	end else begin
 		reset_done <= 1'b0;
 	end
 	
-	if (state == RESET_BORDER || state == GAME_WIN1 || state == GAME_WIN2) begin
+	if (state == RESET_BORDER && reset_done == 1'b0) begin
 		if (yb == 0 || yb == 239) begin
 			if (xb < 319) begin
 				xb <= xb + 1;
