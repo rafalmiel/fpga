@@ -60,8 +60,8 @@ always write_data =
 			: (state == RESET_BORDER) ? 2'b11 
 			: 2'b00;
 
-always @ (posedge clock) begin
-	if (reset && state != RESET) begin
+always @ (posedge clock or posedge reset) begin
+	if (reset) begin
 		state <= RESET;
 	end else begin
 		case (state)
@@ -133,6 +133,7 @@ always @ (posedge clock) begin
 					state <= GAME_WIN2;
 			end
 			GAME_OVER: begin
+				state <= GAME_OVER;
 			end
 		endcase
 	end
@@ -172,10 +173,10 @@ end
 always @ (posedge clock) begin
 	if (count == 1500000) begin
 		tick <= 1'b1;
-		count = 0;
+		count <= 0;
 	end else begin
 		tick <= 1'b0;
-		count = count + 1;
+		count <= count + 1;
 	end
 end
 
