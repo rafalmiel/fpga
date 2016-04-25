@@ -51,12 +51,12 @@ module bigram (
 	input	[16:0]  address_a;
 	input	[16:0]  address_b;
 	input	  clock;
-	input	[1:0]  data_a;
-	input	[1:0]  data_b;
+	input	[2:0]  data_a;
+	input	[2:0]  data_b;
 	input	  wren_a;
 	input	  wren_b;
-	output	[1:0]  q_a;
-	output	[1:0]  q_b;
+	output	[2:0]  q_a;
+	output	[2:0]  q_b;
 `ifndef ALTERA_RESERVED_QIS
 // synopsys translate_off
 `endif
@@ -67,10 +67,10 @@ module bigram (
 // synopsys translate_on
 `endif
 
-	wire [1:0] sub_wire0;
-	wire [1:0] sub_wire1;
-	wire [1:0] q_a = sub_wire0[1:0];
-	wire [1:0] q_b = sub_wire1[1:0];
+	wire [2:0] sub_wire0;
+	wire [2:0] sub_wire1;
+	wire [2:0] q_a = sub_wire0[2:0];
+	wire [2:0] q_b = sub_wire1[2:0];
 
 	altsyncram	altsyncram_component (
 				.address_a (address_a),
@@ -114,12 +114,12 @@ module bigram (
 		altsyncram_component.outdata_reg_b = "CLOCK0",
 		altsyncram_component.power_up_uninitialized = "FALSE",
 		altsyncram_component.read_during_write_mode_mixed_ports = "OLD_DATA",
-		altsyncram_component.read_during_write_mode_port_a = "NEW_DATA_NO_NBE_READ",
-		altsyncram_component.read_during_write_mode_port_b = "NEW_DATA_NO_NBE_READ",
+		altsyncram_component.read_during_write_mode_port_a = "NEW_DATA_WITH_NBE_READ",
+		altsyncram_component.read_during_write_mode_port_b = "NEW_DATA_WITH_NBE_READ",
 		altsyncram_component.widthad_a = 17,
 		altsyncram_component.widthad_b = 17,
-		altsyncram_component.width_a = 2,
-		altsyncram_component.width_b = 2,
+		altsyncram_component.width_a = 3,
+		altsyncram_component.width_b = 3,
 		altsyncram_component.width_byteena_a = 1,
 		altsyncram_component.width_byteena_b = 1,
 		altsyncram_component.wrcontrol_wraddress_reg_b = "CLOCK0";
@@ -160,7 +160,7 @@ endmodule
 // Retrieval info: PRIVATE: JTAG_ENABLED NUMERIC "0"
 // Retrieval info: PRIVATE: JTAG_ID STRING "NONE"
 // Retrieval info: PRIVATE: MAXIMUM_DEPTH NUMERIC "0"
-// Retrieval info: PRIVATE: MEMSIZE NUMERIC "153600"
+// Retrieval info: PRIVATE: MEMSIZE NUMERIC "230400"
 // Retrieval info: PRIVATE: MEM_IN_BITS NUMERIC "0"
 // Retrieval info: PRIVATE: MIFfilename STRING ""
 // Retrieval info: PRIVATE: OPERATION_MODE NUMERIC "3"
@@ -168,8 +168,8 @@ endmodule
 // Retrieval info: PRIVATE: OUTDATA_REG_B NUMERIC "1"
 // Retrieval info: PRIVATE: RAM_BLOCK_TYPE NUMERIC "0"
 // Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_MIXED_PORTS NUMERIC "1"
-// Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_A NUMERIC "3"
-// Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_B NUMERIC "3"
+// Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_A NUMERIC "4"
+// Retrieval info: PRIVATE: READ_DURING_WRITE_MODE_PORT_B NUMERIC "4"
 // Retrieval info: PRIVATE: REGdata NUMERIC "1"
 // Retrieval info: PRIVATE: REGq NUMERIC "1"
 // Retrieval info: PRIVATE: REGrdaddress NUMERIC "0"
@@ -180,10 +180,10 @@ endmodule
 // Retrieval info: PRIVATE: USE_DIFF_CLKEN NUMERIC "0"
 // Retrieval info: PRIVATE: UseDPRAM NUMERIC "1"
 // Retrieval info: PRIVATE: VarWidth NUMERIC "0"
-// Retrieval info: PRIVATE: WIDTH_READ_A NUMERIC "2"
-// Retrieval info: PRIVATE: WIDTH_READ_B NUMERIC "2"
-// Retrieval info: PRIVATE: WIDTH_WRITE_A NUMERIC "2"
-// Retrieval info: PRIVATE: WIDTH_WRITE_B NUMERIC "2"
+// Retrieval info: PRIVATE: WIDTH_READ_A NUMERIC "3"
+// Retrieval info: PRIVATE: WIDTH_READ_B NUMERIC "3"
+// Retrieval info: PRIVATE: WIDTH_WRITE_A NUMERIC "3"
+// Retrieval info: PRIVATE: WIDTH_WRITE_B NUMERIC "3"
 // Retrieval info: PRIVATE: WRADDR_ACLR_B NUMERIC "0"
 // Retrieval info: PRIVATE: WRADDR_REG_B NUMERIC "1"
 // Retrieval info: PRIVATE: WRCTRL_ACLR_B NUMERIC "0"
@@ -207,33 +207,33 @@ endmodule
 // Retrieval info: CONSTANT: OUTDATA_REG_B STRING "CLOCK0"
 // Retrieval info: CONSTANT: POWER_UP_UNINITIALIZED STRING "FALSE"
 // Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_MIXED_PORTS STRING "OLD_DATA"
-// Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_A STRING "NEW_DATA_NO_NBE_READ"
-// Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_B STRING "NEW_DATA_NO_NBE_READ"
+// Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_A STRING "NEW_DATA_WITH_NBE_READ"
+// Retrieval info: CONSTANT: READ_DURING_WRITE_MODE_PORT_B STRING "NEW_DATA_WITH_NBE_READ"
 // Retrieval info: CONSTANT: WIDTHAD_A NUMERIC "17"
 // Retrieval info: CONSTANT: WIDTHAD_B NUMERIC "17"
-// Retrieval info: CONSTANT: WIDTH_A NUMERIC "2"
-// Retrieval info: CONSTANT: WIDTH_B NUMERIC "2"
+// Retrieval info: CONSTANT: WIDTH_A NUMERIC "3"
+// Retrieval info: CONSTANT: WIDTH_B NUMERIC "3"
 // Retrieval info: CONSTANT: WIDTH_BYTEENA_A NUMERIC "1"
 // Retrieval info: CONSTANT: WIDTH_BYTEENA_B NUMERIC "1"
 // Retrieval info: CONSTANT: WRCONTROL_WRADDRESS_REG_B STRING "CLOCK0"
 // Retrieval info: USED_PORT: address_a 0 0 17 0 INPUT NODEFVAL "address_a[16..0]"
 // Retrieval info: USED_PORT: address_b 0 0 17 0 INPUT NODEFVAL "address_b[16..0]"
 // Retrieval info: USED_PORT: clock 0 0 0 0 INPUT VCC "clock"
-// Retrieval info: USED_PORT: data_a 0 0 2 0 INPUT NODEFVAL "data_a[1..0]"
-// Retrieval info: USED_PORT: data_b 0 0 2 0 INPUT NODEFVAL "data_b[1..0]"
-// Retrieval info: USED_PORT: q_a 0 0 2 0 OUTPUT NODEFVAL "q_a[1..0]"
-// Retrieval info: USED_PORT: q_b 0 0 2 0 OUTPUT NODEFVAL "q_b[1..0]"
+// Retrieval info: USED_PORT: data_a 0 0 3 0 INPUT NODEFVAL "data_a[2..0]"
+// Retrieval info: USED_PORT: data_b 0 0 3 0 INPUT NODEFVAL "data_b[2..0]"
+// Retrieval info: USED_PORT: q_a 0 0 3 0 OUTPUT NODEFVAL "q_a[2..0]"
+// Retrieval info: USED_PORT: q_b 0 0 3 0 OUTPUT NODEFVAL "q_b[2..0]"
 // Retrieval info: USED_PORT: wren_a 0 0 0 0 INPUT GND "wren_a"
 // Retrieval info: USED_PORT: wren_b 0 0 0 0 INPUT GND "wren_b"
 // Retrieval info: CONNECT: @address_a 0 0 17 0 address_a 0 0 17 0
 // Retrieval info: CONNECT: @address_b 0 0 17 0 address_b 0 0 17 0
 // Retrieval info: CONNECT: @clock0 0 0 0 0 clock 0 0 0 0
-// Retrieval info: CONNECT: @data_a 0 0 2 0 data_a 0 0 2 0
-// Retrieval info: CONNECT: @data_b 0 0 2 0 data_b 0 0 2 0
+// Retrieval info: CONNECT: @data_a 0 0 3 0 data_a 0 0 3 0
+// Retrieval info: CONNECT: @data_b 0 0 3 0 data_b 0 0 3 0
 // Retrieval info: CONNECT: @wren_a 0 0 0 0 wren_a 0 0 0 0
 // Retrieval info: CONNECT: @wren_b 0 0 0 0 wren_b 0 0 0 0
-// Retrieval info: CONNECT: q_a 0 0 2 0 @q_a 0 0 2 0
-// Retrieval info: CONNECT: q_b 0 0 2 0 @q_b 0 0 2 0
+// Retrieval info: CONNECT: q_a 0 0 3 0 @q_a 0 0 3 0
+// Retrieval info: CONNECT: q_b 0 0 3 0 @q_b 0 0 3 0
 // Retrieval info: GEN_FILE: TYPE_NORMAL bigram.v TRUE
 // Retrieval info: GEN_FILE: TYPE_NORMAL bigram.inc FALSE
 // Retrieval info: GEN_FILE: TYPE_NORMAL bigram.cmp FALSE

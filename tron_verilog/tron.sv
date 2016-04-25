@@ -22,14 +22,14 @@ wire [10:0] phys_x;
 wire [10:0] phys_y;
 wire is_drawing;
 wire [18:0] vga_ram_address;
-wire [1:0] vga_ram_write_enabled;
-wire [1:0] vga_ram_read_data;
+wire vga_ram_write_enabled;
+wire [2:0] vga_ram_read_data;
 
 // LOGIC
 wire [18:0] logic_ram_address;
 wire logic_ram_write_enabled;
-wire [1:0] logic_ram_read_data;
-wire [1:0] logic_ram_write_data;
+wire [2:0] logic_ram_read_data;
+wire [2:0] logic_ram_write_data;
 
 wire ps2_code_new;
 reg [1:0] ps2_code_new_state = 2'b00;
@@ -39,10 +39,12 @@ reg ps2_is_ext;
 wire [7:0] ps2_code;
 dir_t dir1 = RIGHT;
 dir_t dir2 = LEFT;
+dir_t dir3 = DOWN;
+dir_t dir4 = UP;
 
-assign VGA_RED = is_drawing & (vga_ram_read_data == 2'b01 || vga_ram_read_data == 2'b11);
-assign VGA_GREEN = is_drawing & (vga_ram_read_data == 2'b10 || vga_ram_read_data == 2'b11);
-assign VGA_BLUE = is_drawing & (vga_ram_read_data == 2'b11);
+assign VGA_RED = is_drawing & vga_ram_read_data[2];
+assign VGA_GREEN = is_drawing & vga_ram_read_data[1];
+assign VGA_BLUE = is_drawing & vga_ram_read_data[0];
 
 wire reset;
 
@@ -68,7 +70,7 @@ always @ (posedge CLOCK_50) begin
 			if (ps2_is_break) begin
 				ps2_is_break <= 1'b0;
 			end else begin	
-				if (ps2_code == 8'h1D) begin
+				if (ps2_code == 8'h1D && ~ps2_is_ext) begin
 					dir1 <= UP;
 				end else if (ps2_code == 8'h1B && ~ps2_is_ext) begin
 					dir1 <= DOWN;
@@ -76,6 +78,7 @@ always @ (posedge CLOCK_50) begin
 					dir1 <= LEFT;
 				end else if (ps2_code == 8'h23 && ~ps2_is_ext) begin
 					dir1 <= RIGHT;
+
 				end else if (ps2_code == 8'h75 && ps2_is_ext) begin
 					dir2 <= UP;
 				end else if (ps2_code == 8'h72 && ps2_is_ext) begin
@@ -84,9 +87,30 @@ always @ (posedge CLOCK_50) begin
 					dir2 <= LEFT;
 				end else if (ps2_code == 8'h74 && ps2_is_ext) begin
 					dir2 <= RIGHT;
+
+				end else if (ps2_code == 8'h2C && ~ps2_is_ext) begin
+					dir3 <= UP;
+				end else if (ps2_code == 8'h34 && ~ps2_is_ext) begin
+					dir3 <= DOWN;
+				end else if (ps2_code == 8'h2B && ~ps2_is_ext) begin
+					dir3 <= LEFT;
+				end else if (ps2_code == 8'h33 && ~ps2_is_ext) begin
+					dir3 <= RIGHT;
+
+				end else if (ps2_code == 8'h43 && ~ps2_is_ext) begin
+					dir4 <= UP;
+				end else if (ps2_code == 8'h42 && ~ps2_is_ext) begin
+					dir4 <= DOWN;
+				end else if (ps2_code == 8'h3B && ~ps2_is_ext) begin
+					dir4 <= LEFT;
+				end else if (ps2_code == 8'h4B && ~ps2_is_ext) begin
+					dir4 <= RIGHT;
+
 				end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin
 					dir1 <= RIGHT;
 					dir2 <= LEFT;
+					dir3 <= DOWN;
+					dir4 <= UP;
 				end
 			end
 		end
@@ -104,6 +128,8 @@ game_logic log (
 	.reset(reset),
 	.d1(dir1),
 	.d2(dir2),
+	.d3(dir3),
+	.d4(dir4),
 	.ram_address(logic_ram_address),
 	.ram_read_data(logic_ram_read_data),
 	.ram_write_enabled(logic_ram_write_enabled),
