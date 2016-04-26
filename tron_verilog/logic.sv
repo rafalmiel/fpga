@@ -21,6 +21,8 @@ dir_t dir3 = DOWN;
 dir_t dir4 = UP;
 State state = RESET;
 
+reg is_border = 1'b0;
+
 reg [10:0] x1 = 20;
 reg [10:0] y1 = 120;
 
@@ -100,7 +102,7 @@ always write_data =
 			: (state == MOVE2) ? 3'b010
 			: (state == MOVE3) ? 3'b011
 			: (state == MOVE4) ? 3'b110
-			: (state == RESET_BORDER) ? 3'b111
+			: (state == RESET_BORDER && is_border) ? 3'b111
 			: 3'b000;
 
 always @ (posedge clock or posedge reset) begin
@@ -296,7 +298,7 @@ always @ (posedge clock) begin
 end
 
 always @ (posedge clock) begin
-	if (count == 1500000) begin
+	if (count == 1250000) begin
 		tick <= 1'b1;
 		count <= 0;
 	end else begin
@@ -307,41 +309,93 @@ end
 
 always @ (posedge clock) begin
 	if (state == UPDATE_POS) begin
-		if (dir1 == UP)
-			y1 <= y1 - 1;
-		else if (dir1 == RIGHT)
-			x1 <= x1 + 1;
-		else if (dir1 == DOWN)
-			y1 <= y1 + 1;
-		else
-			x1 <= x1 - 1;
+		if (dir1 == UP) begin
+			if (~is_border && y1 == 0)
+				y1 <= 239;
+			else
+				y1 <= y1 - 1;
+		end else if (dir1 == RIGHT) begin
+			if (~is_border && x1 == 319)
+				x1 <= 0;
+			else
+				x1 <= x1 + 1;
+		end else if (dir1 == DOWN) begin
+			if (~is_border && y1 == 239)
+				y1 <= 0;
+			else
+				y1 <= y1 + 1;
+		end else begin
+			if (~is_border && x1 == 0)
+				x1 <= 319;
+			else
+				x1 <= x1 - 1;
+		end
 
-		if (dir2 == UP)
-			y2 <= y2 - 1;
-		else if (dir2 == RIGHT)
-			x2 <= x2 + 1;
-		else if (dir2 == DOWN)
-			y2 <= y2 + 1;
-		else
-			x2 <= x2 - 1;
+		if (dir2 == UP) begin
+			if (~is_border && y2 == 0)
+				y2 <= 239;
+			else
+				y2 <= y2 - 1;
+		end else if (dir2 == RIGHT) begin
+			if (~is_border && x2 == 319)
+				x2 <= 0;
+			else
+				x2 <= x2 + 1;
+		end else if (dir2 == DOWN) begin
+			if (~is_border && y2 == 239)
+				y2 <= 0;
+			else
+				y2 <= y2 + 1;
+		end else begin
+			if (~is_border && x2 == 0)
+				x2 <= 319;
+			else
+				x2 <= x2 - 1;
+		end
 
-		if (dir3 == UP)
-			y3 <= y3 - 1;
-		else if (dir3 == RIGHT)
-			x3 <= x3 + 1;
-		else if (dir3 == DOWN)
-			y3 <= y3 + 1;
-		else
-			x3 <= x3 - 1;
-			
-		if (dir4 == UP)
-			y4 <= y4 - 1;
-		else if (dir4 == RIGHT)
-			x4 <= x4 + 1;
-		else if (dir4 == DOWN)
-			y4 <= y4 + 1;
-		else
-			x4 <= x4 - 1;
+		if (dir3 == UP) begin
+			if (~is_border && y3 == 0)
+				y3 <= 239;
+			else
+				y3 <= y3 - 1;
+		end else if (dir3 == RIGHT) begin
+			if (~is_border && x3 == 319)
+				x3 <= 0;
+			else
+				x3 <= x3 + 1;
+		end else if (dir3 == DOWN) begin
+			if (~is_border && y3 == 239)
+				y3 <= 0;
+			else
+				y3 <= y3 + 1;
+		end else begin
+			if (~is_border && x3 == 0)
+				x3 <= 319;
+			else
+				x3 <= x3 - 1;
+		end
+
+		if (dir4 == UP) begin
+			if (~is_border && y4 == 0)
+				y4 <= 239;
+			else
+				y4 <= y4 - 1;
+		end else if (dir4 == RIGHT) begin
+			if (~is_border && x4 == 319)
+				x4 <= 0;
+			else
+				x4 <= x4 + 1;
+		end else if (dir4 == DOWN) begin
+			if (~is_border && y4 == 239)
+				y4 <= 0;
+			else
+				y4 <= y4 + 1;
+		end else begin
+			if (~is_border && x4 == 0)
+				x4 <= 319;
+			else
+				x4 <= x4 - 1;
+		end
 	end
 	
 	if (state == RESET_POS) begin

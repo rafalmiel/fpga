@@ -90,22 +90,22 @@ always @ (posedge CLOCK_50) begin
 				end else if (ps2_code == 8'h74 && ps2_is_ext) begin
 					dir2 <= RIGHT;
 
-				end else if (ps2_code == 8'h2C && ~ps2_is_ext) begin
-					dir3 <= UP;
-				end else if (ps2_code == 8'h34 && ~ps2_is_ext) begin
-					dir3 <= DOWN;
-				end else if (ps2_code == 8'h2B && ~ps2_is_ext) begin
-					dir3 <= LEFT;
-				end else if (ps2_code == 8'h33 && ~ps2_is_ext) begin
-					dir3 <= RIGHT;
-
 				end else if (ps2_code == 8'h43 && ~ps2_is_ext) begin
-					dir4 <= UP;
+					dir3 <= UP;
 				end else if (ps2_code == 8'h42 && ~ps2_is_ext) begin
-					dir4 <= DOWN;
+					dir3 <= DOWN;
 				end else if (ps2_code == 8'h3B && ~ps2_is_ext) begin
-					dir4 <= LEFT;
+					dir3 <= LEFT;
 				end else if (ps2_code == 8'h4B && ~ps2_is_ext) begin
+					dir3 <= RIGHT;
+					
+				end else if (ps2_code == 8'h2C && ~ps2_is_ext) begin
+					dir4 <= UP;
+				end else if (ps2_code == 8'h34 && ~ps2_is_ext) begin
+					dir4 <= DOWN;
+				end else if (ps2_code == 8'h2B && ~ps2_is_ext) begin
+					dir4 <= LEFT;
+				end else if (ps2_code == 8'h33 && ~ps2_is_ext) begin
 					dir4 <= RIGHT;
 
 				end else if (ps2_code == 8'h1E && ~ps2_is_ext) begin
