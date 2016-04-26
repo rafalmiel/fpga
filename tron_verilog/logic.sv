@@ -69,7 +69,6 @@ reg was_turn2 = 1'b0;
 reg was_turn3 = 1'b0;
 reg was_turn4 = 1'b0;
 
-reg reset_line_read = 1'b1;
 reg reset_line_write = 1'b0;
 
 reg [2:0] player_count = 4;
@@ -77,10 +76,12 @@ reg [2:0] player_count = 4;
 typedef enum logic [1:0] {GL_READ_DATA=2'b00, GL_CHECK_DATA=2'b01, GL_UPDATE_POS=2'b10} GameLostState;
 GameLostState game_lost_state = GL_READ_DATA;
 
-
 assign ram_write_enabled = write_enabled;
 assign ram_address = address;
 assign ram_write_data = write_data;
+
+wire state_is_game_lost;
+assign state_is_game_lost = (state == GAME_LOST1 || state == GAME_LOST2 || state == GAME_LOST3 || state == GAME_LOST4);
 
 always write_enabled =    ((state == MOVE1 && ~is_crash1 && ~is_lost1) || (state == MOVE2 && ~is_crash2 && ~is_lost2) || 
 										(state == MOVE3 && ~is_crash3 && ~is_lost3) || (state == MOVE4 && ~is_crash4 && ~is_lost4) || state == RESET || state == RESET_BORDER) ? 1'b1 
@@ -93,8 +94,7 @@ always address =
 			: (state == CHECK2 || state == CHECK_DATA2 || state == MOVE2) ? (320*y2 + x2)
 			: (state == CHECK3 || state == CHECK_DATA3 || state == MOVE3) ? (320*y3 + x3)
 			: (state == CHECK4 || state == CHECK_DATA4 || state == MOVE4) ? (320*y4 + x4)	
-			: (state == RESET || state == RESET_BORDER || state == GAME_LOST1 || state == GAME_LOST2 || 
-					state == GAME_LOST3 || state == GAME_LOST4) ? (320*yb + xb) 
+			: (state == RESET || state == RESET_BORDER || state_is_game_lost) ? (320*yb + xb) 
 			: 0;
 
 always write_data = 
@@ -126,7 +126,7 @@ always @ (posedge clock or posedge reset) begin
 				state <= WAIT;
 			end
 			WAIT: begin
-				if (player_count < 2)
+				if (player_count < 1)
 					state <= GAME_OVER;
 				else if (tick == 1'b1)
 					state <= UPDATE_POS;
@@ -233,68 +233,41 @@ always @ (posedge clock or posedge reset) begin
 	end
 end
 
-always @ (posedge clock) begin
-	if (tick)
-		was_turn1 <= 1'b0;
-
+task handle_dir(
+	input dir_t d,
+	input dir_t rd,	
+	
+	inout was_turn,
+	inout dir_t dir
+);
 	if (state == RESET) begin
-		dir1 <= RIGHT;
-		was_turn1 <= 1'b0;
-	end else if (~was_turn1 && ((dir1 == UP && d1 != DOWN) 
-		|| (dir1 == DOWN && d1 != UP) 
-		|| (dir1 == RIGHT && d1 != LEFT) 
-		|| (dir1 == LEFT && d1 != RIGHT))) begin
-		dir1 <= d1;
-		was_turn1 <= 1'b1;
+		dir <= rd;
+		was_turn <= 1'b0;
+	end else if (state == CHECK1) // State after updating the pos
+		was_turn <= 1'b0;
+	else if (~was_turn && ((dir == UP && d != DOWN) 
+		|| (dir == DOWN && d != UP) 
+		|| (dir == RIGHT && d != LEFT) 
+		|| (dir == LEFT && d != RIGHT))) begin
+		dir <= d;
+		was_turn <= 1'b1;
 	end
+endtask
+
+always @ (posedge clock) begin
+	handle_dir(d1, RIGHT, was_turn1, dir1);
 end
 
 always @ (posedge clock) begin
-	if (tick)
-		was_turn2 <= 1'b0;
-
-	if (state == RESET) begin
-		dir2 <= LEFT;
-		was_turn2 <= 1'b0;
-	end else if (~was_turn2 && ((dir2 == UP && d2 != DOWN) 
-		|| (dir2 == DOWN && d2 != UP) 
-		|| (dir2 == RIGHT && d2 != LEFT) 
-		|| (dir2 == LEFT && d2 != RIGHT))) begin
-		dir2 <= d2;
-		was_turn2 <= 1'b1;
-	end
+	handle_dir(d2, LEFT, was_turn2, dir2);
 end
 
 always @ (posedge clock) begin
-	if (tick)
-		was_turn3 <= 1'b0;
-
-	if (state == RESET) begin
-		dir3 <= DOWN;
-		was_turn3 <= 1'b0;
-	end else if (~was_turn3 && ((dir3 == UP && d3 != DOWN) 
-		|| (dir3 == DOWN && d3 != UP) 
-		|| (dir3 == RIGHT && d3 != LEFT) 
-		|| (dir3 == LEFT && d3 != RIGHT))) begin
-		dir3 <= d3;
-		was_turn3 <= 1'b1;
-	end
+	handle_dir(d3, DOWN, was_turn3, dir3);
 end
 
 always @ (posedge clock) begin
-	if (tick)
-		was_turn4 <= 1'b0;
-
-	if (state == RESET) begin
-		dir4 <= UP;
-		was_turn4 <= 1'b0;
-	end else if (~was_turn4 && ((dir4 == UP && d4 != DOWN) 
-		|| (dir4 == DOWN && d4 != UP) 
-		|| (dir4 == RIGHT && d4 != LEFT) 
-		|| (dir4 == LEFT && d4 != RIGHT))) begin
-		dir4 <= d4;
-		was_turn4 <= 1'b1;
-	end
+	handle_dir(d4, UP, was_turn4, dir4);
 end
 
 always @ (posedge clock) begin
@@ -307,95 +280,43 @@ always @ (posedge clock) begin
 	end
 end
 
+task automatic handle_update_post(
+	input dir_t dir,
+	
+	inout [10:0] x,
+	inout [10:0] y
+);
+
+	if (dir == UP) begin
+		if (~is_border && y == 0)
+			y <= 239;
+		else
+			y <= y - 1;
+	end else if (dir == RIGHT) begin
+		if (~is_border && x == 319)
+			x <= 0;
+		else
+			x <= x + 1;
+	end else if (dir == DOWN) begin
+		if (~is_border && y == 239)
+			y <= 0;
+		else
+			y <= y + 1;
+	end else begin
+		if (~is_border && x == 0)
+			x <= 319;
+		else
+			x <= x - 1;
+	end
+
+endtask
+
 always @ (posedge clock) begin
 	if (state == UPDATE_POS) begin
-		if (dir1 == UP) begin
-			if (~is_border && y1 == 0)
-				y1 <= 239;
-			else
-				y1 <= y1 - 1;
-		end else if (dir1 == RIGHT) begin
-			if (~is_border && x1 == 319)
-				x1 <= 0;
-			else
-				x1 <= x1 + 1;
-		end else if (dir1 == DOWN) begin
-			if (~is_border && y1 == 239)
-				y1 <= 0;
-			else
-				y1 <= y1 + 1;
-		end else begin
-			if (~is_border && x1 == 0)
-				x1 <= 319;
-			else
-				x1 <= x1 - 1;
-		end
-
-		if (dir2 == UP) begin
-			if (~is_border && y2 == 0)
-				y2 <= 239;
-			else
-				y2 <= y2 - 1;
-		end else if (dir2 == RIGHT) begin
-			if (~is_border && x2 == 319)
-				x2 <= 0;
-			else
-				x2 <= x2 + 1;
-		end else if (dir2 == DOWN) begin
-			if (~is_border && y2 == 239)
-				y2 <= 0;
-			else
-				y2 <= y2 + 1;
-		end else begin
-			if (~is_border && x2 == 0)
-				x2 <= 319;
-			else
-				x2 <= x2 - 1;
-		end
-
-		if (dir3 == UP) begin
-			if (~is_border && y3 == 0)
-				y3 <= 239;
-			else
-				y3 <= y3 - 1;
-		end else if (dir3 == RIGHT) begin
-			if (~is_border && x3 == 319)
-				x3 <= 0;
-			else
-				x3 <= x3 + 1;
-		end else if (dir3 == DOWN) begin
-			if (~is_border && y3 == 239)
-				y3 <= 0;
-			else
-				y3 <= y3 + 1;
-		end else begin
-			if (~is_border && x3 == 0)
-				x3 <= 319;
-			else
-				x3 <= x3 - 1;
-		end
-
-		if (dir4 == UP) begin
-			if (~is_border && y4 == 0)
-				y4 <= 239;
-			else
-				y4 <= y4 - 1;
-		end else if (dir4 == RIGHT) begin
-			if (~is_border && x4 == 319)
-				x4 <= 0;
-			else
-				x4 <= x4 + 1;
-		end else if (dir4 == DOWN) begin
-			if (~is_border && y4 == 239)
-				y4 <= 0;
-			else
-				y4 <= y4 + 1;
-		end else begin
-			if (~is_border && x4 == 0)
-				x4 <= 319;
-			else
-				x4 <= x4 - 1;
-		end
+		handle_update_post(dir1, x1, y1);
+		handle_update_post(dir2, x2, y2);
+		handle_update_post(dir3, x3, y3);
+		handle_update_post(dir4, x4, y4);
 	end
 	
 	if (state == RESET_POS) begin
@@ -410,6 +331,34 @@ always @ (posedge clock) begin
 	end
 end
 
+task automatic handle_check_data(
+	input [10:0] x, input [10:0] y, input [10:0] x1, input [10:0] y1, input [10:0] x2, input [10:0] y2, input [10:0] x3, input [10:0] y3,
+	input State s,
+	input is_lost,
+	
+	inout check_data_done,
+	inout is_crash
+);
+
+	if (state == s && check_data_done == 1'b0) begin
+		if (ram_read_data != 3'b000 && ~is_lost) begin
+			is_crash <= 1'b1;
+			player_count <= player_count - 1;
+		end else
+			is_crash <= 1'b0;
+		
+		if (((x == x1 && y == y1) || (x == x2 && y == y2) || (x == x3 && y == y3)) && ~is_lost) begin
+			is_crash <= 1'b1;
+			player_count <= player_count - 1;
+		end
+
+		check_data_done <= 1'b1;
+	end else begin
+		check_data_done <= 1'b0;
+	end
+
+endtask
+
 always @ (posedge clock) begin
 	if (state == RESET) begin
 		player_count <= reset_player_count;
@@ -419,77 +368,14 @@ always @ (posedge clock) begin
 		is_crash4 <= 1'b0;
 	end
 
-	if (state == CHECK_DATA1 && check_data1_done == 1'b0) begin
-		if (ram_read_data != 3'b000 && ~is_lost1) begin
-			is_crash1 <= 1'b1;
-			player_count <= player_count - 1;
-		end else
-			is_crash1 <= 1'b0;
-		
-		if (((x1 == x2 && y1 == y2) || (x1 == x3 && y1 == y3) || (x1 == x4 && y1 == y4)) && ~is_lost1) begin
-			is_crash1 <= 1'b1;
-			player_count <= player_count - 1;
-		end
-
-		check_data1_done <= 1'b1;
-	end else begin
-		check_data1_done <= 1'b0;
-	end
-	
-	if (state == CHECK_DATA2 && check_data2_done == 1'b0) begin
-		if (ram_read_data != 3'b000 && ~is_lost2) begin
-			is_crash2 <= 1'b1;
-			player_count <= player_count - 1;
-		end else
-			is_crash2 <= 1'b0;
-
-		if (((x2 == x1 && y2 == y1) || (x2 == x3 && y2 == y3) || (x2 == x4 && y2 == y4)) && ~is_lost2) begin
-			is_crash2 <= 1'b1;
-			player_count <= player_count - 1;
-		end
-
-		check_data2_done <= 1'b1;
-	end else begin
-		check_data2_done <= 1'b0;
-	end
-	
-	if (state == CHECK_DATA3 && check_data3_done == 1'b0) begin
-		if (ram_read_data != 3'b000 && ~is_lost3) begin
-			is_crash3 <= 1'b1;
-			player_count <= player_count - 1;
-		end else
-			is_crash3 <= 1'b0;
-
-		if (((x3 == x1 && y3 == y1) || (x3 == x2 && y3 == y2) || (x3 == x4 && y3 == y4)) && ~is_lost3) begin
-			is_crash3 <= 1'b1;
-			player_count <= player_count - 1;
-		end
-
-		check_data3_done <= 1'b1;
-	end else begin
-		check_data3_done <= 1'b0;
-	end
-	
-	if (state == CHECK_DATA4 && check_data4_done == 1'b0) begin
-		if (ram_read_data != 3'b000 && ~is_lost4) begin
-			is_crash4 <= 1'b1;
-			player_count <= player_count - 1;
-		end else
-			is_crash4 <= 1'b0;
-
-		if (((x4 == x1 && y4 == y1) || (x4 == x2 && y4 == y2) || (x4 == x3 && y4 == y3)) && ~is_lost4) begin
-			is_crash4 <= 1'b1;
-			player_count <= player_count - 1;
-		end
-
-		check_data4_done <= 1'b1;
-	end else begin
-		check_data4_done <= 1'b0;
-	end
+	handle_check_data(x1, y1, x2, y2, x3, y3, x4, y4, CHECK_DATA1, is_lost1, check_data1_done, is_crash1);
+	handle_check_data(x2, y2, x1, y1, x3, y3, x4, y4, CHECK_DATA2, is_lost2, check_data2_done, is_crash2);
+	handle_check_data(x3, y3, x2, y2, x1, y1, x4, y4, CHECK_DATA3, is_lost3, check_data3_done, is_crash3);
+	handle_check_data(x4, y4, x2, y2, x3, y3, x1, y1, CHECK_DATA4, is_lost4, check_data4_done, is_crash4);
 end
 
 always @ (posedge clock) begin
-	if (state == GAME_LOST1 || state == GAME_LOST2 || state == GAME_LOST3 || state == GAME_LOST4) begin				
+	if (state_is_game_lost) begin				
 		if (game_lost_state == GL_CHECK_DATA) begin 
 			case (state)
 				GAME_LOST1: begin
@@ -527,7 +413,7 @@ always @ (posedge clock) begin
 			game_lost_state <= GL_CHECK_DATA;
 	end
 
-	if ((state == RESET || ((state == GAME_LOST1 || state == GAME_LOST2 || state == GAME_LOST3 || state == GAME_LOST4) && game_lost_state == GL_UPDATE_POS)) 
+	if ((state == RESET || ((state_is_game_lost) && game_lost_state == GL_UPDATE_POS)) 
 		&& reset_done == 1'b0) begin
 		if (xb == 319) begin
 			xb <= 0;
@@ -548,7 +434,7 @@ always @ (posedge clock) begin
 						is_lost4 <= 1'b0;
 					else
 						is_lost4 <= 1'b1;
-				end else if (state == GAME_LOST1 || state == GAME_LOST2 || state == GAME_LOST3 || state == GAME_LOST4) begin
+				end else if (state_is_game_lost) begin
 					case (state)
 						GAME_LOST1: is_lost1 <= 1'b1;
 						GAME_LOST2: is_lost2 <= 1'b1;
@@ -561,7 +447,7 @@ always @ (posedge clock) begin
 		end else
 			xb <= xb + 1;
 			
-		if (state == GAME_LOST1 || state == GAME_LOST2 || state == GAME_LOST3 || state == GAME_LOST4)
+		if (state_is_game_lost)
 			game_lost_state <= GL_READ_DATA;
 	end else begin
 		reset_done <= 1'b0;

@@ -158,7 +158,8 @@ game_logic log (
 );
 
 bigram ram(
-	.clock(ram_clock),
+	.inclock(CLOCK_50),
+	.outclock(ram_clock),
 	
 	.address_a(vga_ram_address),
 	.wren_a(vga_ram_write_enabled),
