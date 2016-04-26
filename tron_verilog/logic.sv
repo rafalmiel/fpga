@@ -3,6 +3,7 @@ import tron_types::*;
 module game_logic (
 	input clock,
 	input reset,
+	input [2:0] reset_player_count,
 	input dir_t d1,
 	input dir_t d2,
 	input dir_t d3,
@@ -357,7 +358,7 @@ end
 
 always @ (posedge clock) begin
 	if (state == RESET) begin
-		player_count <= 4;
+		player_count <= reset_player_count;
 		is_crash1 <= 1'b0;
 		is_crash2 <= 1'b0;
 		is_crash3 <= 1'b0;
@@ -484,8 +485,15 @@ always @ (posedge clock) begin
 				if (state == RESET) begin
 					is_lost1 <= 1'b0;
 					is_lost2 <= 1'b0;
-					is_lost3 <= 1'b0;
-					is_lost4 <= 1'b0;
+					if (reset_player_count > 2)
+						is_lost3 <= 1'b0;
+					else
+						is_lost3 <= 1'b1;
+
+					if (reset_player_count > 3)
+						is_lost4 <= 1'b0;
+					else
+						is_lost4 <= 1'b1;
 				end else if (state == GAME_LOST1 || state == GAME_LOST2 || state == GAME_LOST3 || state == GAME_LOST4) begin
 					case (state)
 						GAME_LOST1: is_lost1 <= 1'b1;

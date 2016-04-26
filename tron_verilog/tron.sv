@@ -48,12 +48,14 @@ assign VGA_BLUE = is_drawing & vga_ram_read_data[0];
 
 wire reset;
 
+reg [2:0] reset_player_count = 4;
+
 assign ps2_code_new_int = (^ps2_code_new_state) & ps2_code_new_state[0];
 
 assign vga_ram_address = (phys_x/2+phys_y/2*320);
 assign vga_ram_write_enabled = 1'b0;
 
-assign reset = (ps2_code_new_int && ps2_code == 8'h29 && ps2_is_break != 1'b0);
+assign reset = (ps2_code_new_int && (ps2_code == 8'h29 || ps2_code == 8'h1E || ps2_code == 8'h26 || ps2_code == 8'h25) && ps2_is_break != 1'b0);
 
 always @ (posedge CLOCK_50) begin
 	ps2_code_new_state = {ps2_code_new_state[0], ps2_code_new};
@@ -106,6 +108,24 @@ always @ (posedge CLOCK_50) begin
 				end else if (ps2_code == 8'h4B && ~ps2_is_ext) begin
 					dir4 <= RIGHT;
 
+				end else if (ps2_code == 8'h1E && ~ps2_is_ext) begin
+					reset_player_count <= 2;
+					dir1 <= RIGHT;
+					dir2 <= LEFT;
+					dir3 <= DOWN;
+					dir4 <= UP;
+				end else if (ps2_code == 8'h26 && ~ps2_is_ext) begin
+					reset_player_count <= 3;
+					dir1 <= RIGHT;
+					dir2 <= LEFT;
+					dir3 <= DOWN;
+					dir4 <= UP;
+				end else if (ps2_code == 8'h25 && ~ps2_is_ext) begin
+					reset_player_count <= 4;
+					dir1 <= RIGHT;
+					dir2 <= LEFT;
+					dir3 <= DOWN;
+					dir4 <= UP;
 				end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin
 					dir1 <= RIGHT;
 					dir2 <= LEFT;
@@ -126,6 +146,7 @@ pll p(
 game_logic log (
 	.clock(CLOCK_50),
 	.reset(reset),
+	.reset_player_count(reset_player_count),
 	.d1(dir1),
 	.d2(dir2),
 	.d3(dir3),
