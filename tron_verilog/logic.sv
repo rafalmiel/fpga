@@ -56,6 +56,11 @@ reg is_crash2 = 1'b0;
 reg is_crash3 = 1'b0;
 reg is_crash4 = 1'b0;
 
+reg is_lost1 = 1'b0;
+reg is_lost2 = 1'b0;
+reg is_lost3 = 1'b0;
+reg is_lost4 = 1'b0;
+
 reg was_turn1 = 1'b0;
 reg was_turn2 = 1'b0;
 reg was_turn3 = 1'b0;
@@ -74,12 +79,12 @@ assign ram_write_enabled = write_enabled;
 assign ram_address = address;
 assign ram_write_data = write_data;
 
-always write_enabled =    ((state == MOVE1 && ~is_crash1) || (state == MOVE2 && ~is_crash2) || 
-										(state == MOVE3 && ~is_crash3) || (state == MOVE4 && ~is_crash4) || state == RESET || state == RESET_BORDER) ? 1'b1 
-								: (state == GAME_LOST1 && game_lost_state == GL_UPDATE_POS && reset_line_write) ? 1'b1
-								: (state == GAME_LOST2 && game_lost_state == GL_UPDATE_POS && reset_line_write) ? 1'b1
-								: (state == GAME_LOST3 && game_lost_state == GL_UPDATE_POS && reset_line_write) ? 1'b1
-								: (state == GAME_LOST4 && game_lost_state == GL_UPDATE_POS && reset_line_write) ? 1'b1 : 1'b0;
+always write_enabled =    ((state == MOVE1 && ~is_crash1 && ~is_lost1) || (state == MOVE2 && ~is_crash2 && ~is_lost2) || 
+										(state == MOVE3 && ~is_crash3 && ~is_lost3) || (state == MOVE4 && ~is_crash4 && ~is_lost4) || state == RESET || state == RESET_BORDER) ? 1'b1 
+								: (state == GAME_LOST1 && game_lost_state == GL_UPDATE_POS && reset_line_write && ~is_lost1) ? 1'b1
+								: (state == GAME_LOST2 && game_lost_state == GL_UPDATE_POS && reset_line_write && ~is_lost2) ? 1'b1
+								: (state == GAME_LOST3 && game_lost_state == GL_UPDATE_POS && reset_line_write && ~is_lost3) ? 1'b1
+								: (state == GAME_LOST4 && game_lost_state == GL_UPDATE_POS && reset_line_write && ~is_lost4) ? 1'b1 : 1'b0;
 always address = 
 			  (state == CHECK1 || state == CHECK_DATA1 || state == MOVE1) ? (320*y1 + x1)
 			: (state == CHECK2 || state == CHECK_DATA2 || state == MOVE2) ? (320*y2 + x2)
@@ -118,7 +123,7 @@ always @ (posedge clock or posedge reset) begin
 				state <= WAIT;
 			end
 			WAIT: begin
-				if (player_count < 4)
+				if (player_count < 2)
 					state <= GAME_OVER;
 				else if (tick == 1'b1)
 					state <= UPDATE_POS;
@@ -169,25 +174,25 @@ always @ (posedge clock or posedge reset) begin
 			
 
 			MOVE1: begin
-				if (is_crash1)
+				if (is_crash1 && ~is_lost1)
 					state <= GAME_LOST1;
 				else
 					state <= MOVE2;
 			end
 			MOVE2: begin
-				if (is_crash2)
+				if (is_crash2 && ~is_lost2)
 					state <= GAME_LOST2;
 				else
 					state <= MOVE3;
 			end
 			MOVE3: begin
-				if (is_crash3)
+				if (is_crash3 && ~is_lost3)
 					state <= GAME_LOST3;
 				else
 					state <= MOVE4;
 			end
 			MOVE4: begin
-				if (is_crash4)
+				if (is_crash4 && ~is_lost4)
 					state <= GAME_LOST4;
 				else
 					state <= WAIT;
@@ -196,25 +201,25 @@ always @ (posedge clock or posedge reset) begin
 
 			GAME_LOST1: begin
 				if (reset_done) 
-					state <= GAME_OVER;
+					state <= MOVE2;
 				else 
 					state <= GAME_LOST1;
 			end
 			GAME_LOST2: begin
 				if (reset_done) 
-					state <= GAME_OVER;
+					state <= MOVE3;
 				else 
 					state <= GAME_LOST2;
 			end
 			GAME_LOST3: begin
 				if (reset_done) 
-					state <= GAME_OVER;
+					state <= MOVE4;
 				else 
 					state <= GAME_LOST3;
 			end
 			GAME_LOST4: begin
 				if (reset_done) 
-					state <= GAME_OVER;
+					state <= WAIT;
 				else 
 					state <= GAME_LOST4;
 			end
@@ -353,16 +358,20 @@ end
 always @ (posedge clock) begin
 	if (state == RESET) begin
 		player_count <= 4;
+		is_crash1 <= 1'b0;
+		is_crash2 <= 1'b0;
+		is_crash3 <= 1'b0;
+		is_crash4 <= 1'b0;
 	end
 
 	if (state == CHECK_DATA1 && check_data1_done == 1'b0) begin
-		if (ram_read_data != 3'b000) begin
+		if (ram_read_data != 3'b000 && ~is_lost1) begin
 			is_crash1 <= 1'b1;
 			player_count <= player_count - 1;
 		end else
 			is_crash1 <= 1'b0;
 		
-		if ((x1 == x2 && y1 == y2) || (x1 == x3 && y1 == y3) || (x1 == x4 && y1 == y4)) begin
+		if (((x1 == x2 && y1 == y2) || (x1 == x3 && y1 == y3) || (x1 == x4 && y1 == y4)) && ~is_lost1) begin
 			is_crash1 <= 1'b1;
 			player_count <= player_count - 1;
 		end
@@ -373,13 +382,13 @@ always @ (posedge clock) begin
 	end
 	
 	if (state == CHECK_DATA2 && check_data2_done == 1'b0) begin
-		if (ram_read_data != 3'b000) begin
+		if (ram_read_data != 3'b000 && ~is_lost2) begin
 			is_crash2 <= 1'b1;
 			player_count <= player_count - 1;
 		end else
 			is_crash2 <= 1'b0;
 
-		if ((x2 == x1 && y2 == y1) || (x2 == x3 && y2 == y3) || (x2 == x4 && y2 == y4)) begin
+		if (((x2 == x1 && y2 == y1) || (x2 == x3 && y2 == y3) || (x2 == x4 && y2 == y4)) && ~is_lost2) begin
 			is_crash2 <= 1'b1;
 			player_count <= player_count - 1;
 		end
@@ -390,13 +399,13 @@ always @ (posedge clock) begin
 	end
 	
 	if (state == CHECK_DATA3 && check_data3_done == 1'b0) begin
-		if (ram_read_data != 3'b000) begin
+		if (ram_read_data != 3'b000 && ~is_lost3) begin
 			is_crash3 <= 1'b1;
 			player_count <= player_count - 1;
 		end else
 			is_crash3 <= 1'b0;
 
-		if ((x3 == x1 && y3 == y1) || (x3 == x2 && y3 == y2) || (x3 == x4 && y3 == y4)) begin
+		if (((x3 == x1 && y3 == y1) || (x3 == x2 && y3 == y2) || (x3 == x4 && y3 == y4)) && ~is_lost3) begin
 			is_crash3 <= 1'b1;
 			player_count <= player_count - 1;
 		end
@@ -407,13 +416,13 @@ always @ (posedge clock) begin
 	end
 	
 	if (state == CHECK_DATA4 && check_data4_done == 1'b0) begin
-		if (ram_read_data != 3'b000) begin
+		if (ram_read_data != 3'b000 && ~is_lost4) begin
 			is_crash4 <= 1'b1;
 			player_count <= player_count - 1;
 		end else
 			is_crash4 <= 1'b0;
 
-		if ((x4 == x1 && y4 == y1) || (x4 == x2 && y4 == y2) || (x4 == x3 && y4 == y3)) begin
+		if (((x4 == x1 && y4 == y1) || (x4 == x2 && y4 == y2) || (x4 == x3 && y4 == y3)) && ~is_lost4) begin
 			is_crash4 <= 1'b1;
 			player_count <= player_count - 1;
 		end
@@ -472,6 +481,19 @@ always @ (posedge clock) begin
 				game_lost_state <= GL_READ_DATA;
 				reset_line_write <= 1'b0;
 				reset_done <= 1'b1;
+				if (state == RESET) begin
+					is_lost1 <= 1'b0;
+					is_lost2 <= 1'b0;
+					is_lost3 <= 1'b0;
+					is_lost4 <= 1'b0;
+				end else if (state == GAME_LOST1 || state == GAME_LOST2 || state == GAME_LOST3 || state == GAME_LOST4) begin
+					case (state)
+						GAME_LOST1: is_lost1 <= 1'b1;
+						GAME_LOST2: is_lost2 <= 1'b1;
+						GAME_LOST3: is_lost3 <= 1'b1;
+						GAME_LOST4: is_lost4 <= 1'b1;
+					endcase
+				end
 			end else
 				yb <= yb + 1;
 		end else
