@@ -289,7 +289,7 @@ task handle_dir(
 	if (state == RESET) begin
 		dres <= rd;
 		was_t <= 1'b0;
-	end else if (state == CHECK && current_player == 0) begin // State after updating the pos
+	end else if (state == CHECK && current_player == 0 && ((is_b && is_boost_tick) || (~is_b && is_tick))) begin // State after updating the pos
 		was_t <= 1'b0;
 		is_b_press <= 1'b0;
 	end else if (~was_t && ((d == UP && dres != DOWN)
