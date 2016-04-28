@@ -22,7 +22,7 @@ wire ver_max = (ver_reg == 524);
 //end
 
 always @ (posedge CLOCK) begin
-	
+
 	if (hor_max) begin
 		hor_reg <= 0;
 

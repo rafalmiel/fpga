@@ -14,7 +14,7 @@ assign counter_set = flipflops[0] ^ flipflops[1];
 
 always @ (posedge clock) begin
 	flipflops <= {flipflops[0], button};
-	
+
 	if (counter_set) begin
 		counter_out <= 0;
 	end else if (counter_out[counter_size] == 1'b0) begin

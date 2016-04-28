@@ -2,7 +2,7 @@ module ps2_keyboard (
 	input clock,
 	input ps2_clock,
 	input ps2_data,
-	
+
 	output ps2_code_new,
 	output [7:0] ps2_code
 );
@@ -46,7 +46,7 @@ always @ (posedge clock) begin
 		count_idle <= 0;
 	else if (count_idle != (clk_freq / 18000))
 		count_idle <= count_idle + 1;
-		
+
 	if ((count_idle == clk_freq / 18000) & (~error)) begin
 		ps2_code_new <= 1'b1;
 		ps2_code <= ps2_word[8:1];
