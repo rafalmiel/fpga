@@ -276,14 +276,14 @@ task handle_dir(
 		if (boost_ac > 0) begin
 			boost_ac <= boost_ac - 1;
 		end else begin
-			boost_cc <= 64;
+			boost_cc <= 256;
 			is_b <= 1'b0;
 		end
 	end else if (boost_cc > 0 && boost_tick) begin
 		boost_cc <= boost_cc - 1;
 	end else if (is_b_press && boost_cc == 0 && boost_tick) begin
 		is_b <= 1'b1;
-		boost_ac <= 64;
+		boost_ac <= 96;
 	end
 
 	if (state == RESET) begin
