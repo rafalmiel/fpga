@@ -37,10 +37,10 @@ wire ps2_code_new_int;
 reg ps2_is_break;
 reg ps2_is_ext;
 wire [7:0] ps2_code;
-dir_t dir1 = RIGHT;
-dir_t dir2 = LEFT;
-dir_t dir3 = DOWN;
-dir_t dir4 = UP;
+Dir dir1 = NONE;
+Dir dir2 = NONE;
+Dir dir3 = NONE;
+Dir dir4 = NONE;
 
 assign VGA_RED = is_drawing & vga_ram_read_data[2];
 assign VGA_GREEN = is_drawing & vga_ram_read_data[1];
@@ -61,6 +61,13 @@ always @ (posedge CLOCK_50) begin
 	ps2_code_new_state = {ps2_code_new_state[0], ps2_code_new};
 end
 
+task reset_dirs;
+	dir1 <= NONE;
+	dir2 <= NONE;
+	dir3 <= NONE;
+	dir4 <= NONE;
+endtask
+
 always @ (posedge CLOCK_50) begin
 	if (ps2_code_new_int) begin
 		if (ps2_code == 8'hF0) begin
@@ -69,69 +76,63 @@ always @ (posedge CLOCK_50) begin
 			ps2_is_ext <= 1'b1;
 		end else begin
 			ps2_is_ext <= 1'b0;
-			if (ps2_is_break) begin
-				ps2_is_break <= 1'b0;
-			end else begin	
-				if (ps2_code == 8'h1D && ~ps2_is_ext) begin
-					dir1 <= UP;
-				end else if (ps2_code == 8'h1B && ~ps2_is_ext) begin
-					dir1 <= DOWN;
-				end else if (ps2_code == 8'h1C && ~ps2_is_ext) begin
-					dir1 <= LEFT;
-				end else if (ps2_code == 8'h23 && ~ps2_is_ext) begin
-					dir1 <= RIGHT;
+			ps2_is_break <= 1'b0;
 
-				end else if (ps2_code == 8'h75 && ps2_is_ext) begin
-					dir2 <= UP;
-				end else if (ps2_code == 8'h72 && ps2_is_ext) begin
-					dir2 <= DOWN;
-				end else if (ps2_code == 8'h6B && ps2_is_ext) begin
-					dir2 <= LEFT;
-				end else if (ps2_code == 8'h74 && ps2_is_ext) begin
-					dir2 <= RIGHT;
+			if (ps2_code == 8'h1D && ~ps2_is_ext) begin				//W
+				dir1 <= (ps2_is_break) ? NONE : UP;
+			end else if (ps2_code == 8'h1B && ~ps2_is_ext) begin	//S
+				dir1 <= (ps2_is_break) ? NONE : DOWN;
+			end else if (ps2_code == 8'h1C && ~ps2_is_ext) begin	//A
+				dir1 <= (ps2_is_break) ? NONE : LEFT;
+			end else if (ps2_code == 8'h23 && ~ps2_is_ext) begin	//D
+				dir1 <= (ps2_is_break) ? NONE : RIGHT;
+			end else if (ps2_code == 8'h24 && ~ps2_is_ext) begin	//E
+				dir1 <= (ps2_is_break) ? NONE : BOOST;
 
-				end else if (ps2_code == 8'h43 && ~ps2_is_ext) begin
-					dir3 <= UP;
-				end else if (ps2_code == 8'h42 && ~ps2_is_ext) begin
-					dir3 <= DOWN;
-				end else if (ps2_code == 8'h3B && ~ps2_is_ext) begin
-					dir3 <= LEFT;
-				end else if (ps2_code == 8'h4B && ~ps2_is_ext) begin
-					dir3 <= RIGHT;
-					
-				end else if (ps2_code == 8'h2C && ~ps2_is_ext) begin
-					dir4 <= UP;
-				end else if (ps2_code == 8'h34 && ~ps2_is_ext) begin
-					dir4 <= DOWN;
-				end else if (ps2_code == 8'h2B && ~ps2_is_ext) begin
-					dir4 <= LEFT;
-				end else if (ps2_code == 8'h33 && ~ps2_is_ext) begin
-					dir4 <= RIGHT;
+			end else if (ps2_code == 8'h75 && ps2_is_ext) begin	//ARROR UP
+				dir2 <= (ps2_is_break) ? NONE : UP;
+			end else if (ps2_code == 8'h72 && ps2_is_ext) begin   //ARROW DOWN
+				dir2 <= (ps2_is_break) ? NONE : DOWN;
+			end else if (ps2_code == 8'h6B && ps2_is_ext) begin	//ARROW LEFT
+				dir2 <= (ps2_is_break) ? NONE : LEFT;
+			end else if (ps2_code == 8'h74 && ps2_is_ext) begin 	//ARROW RIGHT
+				dir2 <= (ps2_is_break) ? NONE : RIGHT;
+			end else if (ps2_code == 8'h70 && ~ps2_is_ext) begin 	//NUM 0
+				dir2 <= (ps2_is_break) ? NONE : BOOST;
 
-				end else if (ps2_code == 8'h1E && ~ps2_is_ext) begin
-					reset_player_count <= 2;
-					dir1 <= RIGHT;
-					dir2 <= LEFT;
-					dir3 <= DOWN;
-					dir4 <= UP;
-				end else if (ps2_code == 8'h26 && ~ps2_is_ext) begin
-					reset_player_count <= 3;
-					dir1 <= RIGHT;
-					dir2 <= LEFT;
-					dir3 <= DOWN;
-					dir4 <= UP;
-				end else if (ps2_code == 8'h25 && ~ps2_is_ext) begin
-					reset_player_count <= 4;
-					dir1 <= RIGHT;
-					dir2 <= LEFT;
-					dir3 <= DOWN;
-					dir4 <= UP;
-				end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin
-					dir1 <= RIGHT;
-					dir2 <= LEFT;
-					dir3 <= DOWN;
-					dir4 <= UP;
-				end
+			end else if (ps2_code == 8'h43 && ~ps2_is_ext) begin	//I
+				dir3 <= (ps2_is_break) ? NONE : UP;
+			end else if (ps2_code == 8'h42 && ~ps2_is_ext) begin	//K
+				dir3 <= (ps2_is_break) ? NONE : DOWN;
+			end else if (ps2_code == 8'h3B && ~ps2_is_ext) begin	//J
+				dir3 <= (ps2_is_break) ? NONE : LEFT;
+			end else if (ps2_code == 8'h4B && ~ps2_is_ext) begin	//L
+				dir3 <= (ps2_is_break) ? NONE : RIGHT;
+			end else if (ps2_code == 8'h44 && ~ps2_is_ext) begin	//O
+				dir3 <= (ps2_is_break) ? NONE : BOOST;
+
+			end else if (ps2_code == 8'h2C && ~ps2_is_ext) begin	//T
+				dir4 <= (ps2_is_break) ? NONE : UP;
+			end else if (ps2_code == 8'h34 && ~ps2_is_ext) begin	//G
+				dir4 <= (ps2_is_break) ? NONE : DOWN;
+			end else if (ps2_code == 8'h2B && ~ps2_is_ext) begin	//F
+				dir4 <= (ps2_is_break) ? NONE : LEFT;
+			end else if (ps2_code == 8'h33 && ~ps2_is_ext) begin	//H
+				dir4 <= (ps2_is_break) ? NONE : RIGHT;
+			end else if (ps2_code == 8'h35 && ~ps2_is_ext) begin	//Y
+				dir4 <= (ps2_is_break) ? NONE : BOOST;
+
+			end else if (ps2_code == 8'h1E && ~ps2_is_ext) begin	//2
+				reset_player_count <= 2;
+				reset_dirs;
+			end else if (ps2_code == 8'h26 && ~ps2_is_ext) begin	//3
+				reset_player_count <= 3;
+				reset_dirs;
+			end else if (ps2_code == 8'h25 && ~ps2_is_ext) begin	//4
+				reset_player_count <= 4;
+				reset_dirs;
+			end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin	//SPACE
+				reset_dirs;
 			end
 		end
 	end
@@ -160,16 +161,16 @@ game_logic log (
 bigram ram(
 	.inclock(CLOCK_50),
 	.outclock(ram_clock),
-	
+
 	.address_a(vga_ram_address),
 	.wren_a(vga_ram_write_enabled),
 	.q_a(vga_ram_read_data),
-	
+
 	.data_b(logic_ram_write_data),
 	.address_b(logic_ram_address),
 	.wren_b(logic_ram_write_enabled),
 	.q_b(logic_ram_read_data)
-); 
+);
 
 vga_verilog vga(
 	.CLOCK(vga_clock),
