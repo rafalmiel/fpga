@@ -18,7 +18,7 @@ module game_logic (
 Dir dir[3:0];
 State state = RESET;
 
-reg is_border = 1'b0;
+reg is_border = 1'b1;
 
 reg [10:0] xp [3:0];
 reg [10:0] yp [3:0];
@@ -82,7 +82,7 @@ end
 
 always write_enabled =
 			  ((state == MOVE && ~is_crash[current_player] && is_player_turn[current_player]) || state == RESET || state == RESET_BORDER) ? 1'b1
-			: (state == GAME_LOST && game_lost_state == GL_UPDATE_POS && reset_line_write && is_player_turn[current_player]) ? 1'b1 : 1'b0;
+			: (state == GAME_LOST && game_lost_state == GL_UPDATE_POS && reset_line_write && ~is_lost[current_player]) ? 1'b1 : 1'b0;
 
 always address =
 			  (state == CHECK || state == CHECK_DATA || state == MOVE) ? (320*yp[current_player] + xp[current_player])
@@ -275,12 +275,14 @@ task handle_dir(
 	if (is_b && boost_tick) begin
 		if (boost_ac > 0) begin
 			boost_ac <= boost_ac - 1;
+			is_b <= 1'b1;
 		end else begin
 			boost_cc <= 256;
 			is_b <= 1'b0;
 		end
 	end else if (boost_cc > 0 && boost_tick) begin
 		boost_cc <= boost_cc - 1;
+		is_b <= 1'b0;
 	end else if (is_b_press && boost_cc == 0 && boost_tick) begin
 		is_b <= 1'b1;
 		boost_ac <= 96;
@@ -367,8 +369,7 @@ endtask
 
 always @ (posedge clock) begin
 	if (state == UPDATE_POS) begin
-		integer i;
-		for (i = 0; i < 4; i = i + 1) begin
+		for (integer i = 0; i < 4; i = i + 1) begin
 			if (is_player_turn[i])
 				handle_update_pos(dir[i], xp[i], yp[i]);
 		end
