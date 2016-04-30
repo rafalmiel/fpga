@@ -78,61 +78,65 @@ always @ (posedge CLOCK_50) begin
 			ps2_is_ext <= 1'b0;
 			ps2_is_break <= 1'b0;
 
-			if (ps2_code == 8'h1D && ~ps2_is_ext) begin				//W
-				dir1 <= (ps2_is_break) ? NONE : UP;
-			end else if (ps2_code == 8'h1B && ~ps2_is_ext) begin	//S
-				dir1 <= (ps2_is_break) ? NONE : DOWN;
-			end else if (ps2_code == 8'h1C && ~ps2_is_ext) begin	//A
-				dir1 <= (ps2_is_break) ? NONE : LEFT;
-			end else if (ps2_code == 8'h23 && ~ps2_is_ext) begin	//D
-				dir1 <= (ps2_is_break) ? NONE : RIGHT;
-			end else if (ps2_code == 8'h24 && ~ps2_is_ext) begin	//E
-				dir1 <= (ps2_is_break) ? NONE : BOOST;
+			if (~ps2_is_break) begin
+				if (ps2_code == 8'h1D && ~ps2_is_ext) begin				//W
+					dir1 <= UP;
+				end else if (ps2_code == 8'h1B && ~ps2_is_ext) begin	//S
+					dir1 <= DOWN;
+				end else if (ps2_code == 8'h1C && ~ps2_is_ext) begin	//A
+					dir1 <= LEFT;
+				end else if (ps2_code == 8'h23 && ~ps2_is_ext) begin	//D
+					dir1 <= RIGHT;
 
-			end else if (ps2_code == 8'h75 && ps2_is_ext) begin	//ARROR UP
-				dir2 <= (ps2_is_break) ? NONE : UP;
-			end else if (ps2_code == 8'h72 && ps2_is_ext) begin   //ARROW DOWN
-				dir2 <= (ps2_is_break) ? NONE : DOWN;
-			end else if (ps2_code == 8'h6B && ps2_is_ext) begin	//ARROW LEFT
-				dir2 <= (ps2_is_break) ? NONE : LEFT;
-			end else if (ps2_code == 8'h74 && ps2_is_ext) begin 	//ARROW RIGHT
-				dir2 <= (ps2_is_break) ? NONE : RIGHT;
+				end else if (ps2_code == 8'h75 && ps2_is_ext) begin	//ARROR UP
+					dir2 <= UP;
+				end else if (ps2_code == 8'h72 && ps2_is_ext) begin   //ARROW DOWN
+					dir2 <= DOWN;
+				end else if (ps2_code == 8'h6B && ps2_is_ext) begin	//ARROW LEFT
+					dir2 <= LEFT;
+				end else if (ps2_code == 8'h74 && ps2_is_ext) begin 	//ARROW RIGHT
+					dir2 <= RIGHT;
+
+				end else if (ps2_code == 8'h43 && ~ps2_is_ext) begin	//I
+					dir3 <= UP;
+				end else if (ps2_code == 8'h42 && ~ps2_is_ext) begin	//K
+					dir3 <= DOWN;
+				end else if (ps2_code == 8'h3B && ~ps2_is_ext) begin	//J
+					dir3 <= LEFT;
+				end else if (ps2_code == 8'h4B && ~ps2_is_ext) begin	//L
+					dir3 <= RIGHT;
+
+				end else if (ps2_code == 8'h2C && ~ps2_is_ext) begin	//T
+					dir4 <= UP;
+				end else if (ps2_code == 8'h34 && ~ps2_is_ext) begin	//G
+					dir4 <= DOWN;
+				end else if (ps2_code == 8'h2B && ~ps2_is_ext) begin	//F
+					dir4 <= LEFT;
+				end else if (ps2_code == 8'h33 && ~ps2_is_ext) begin	//H
+					dir4 <= RIGHT;
+
+				end else if (ps2_code == 8'h1E && ~ps2_is_ext) begin	//2
+					reset_player_count <= 2;
+					reset_dirs;
+				end else if (ps2_code == 8'h26 && ~ps2_is_ext) begin	//3
+					reset_player_count <= 3;
+					reset_dirs;
+				end else if (ps2_code == 8'h25 && ~ps2_is_ext) begin	//4
+					reset_player_count <= 4;
+					reset_dirs;
+				end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin	//SPACE
+					reset_dirs;
+				end
+			end
+
+			if (ps2_code == 8'h24 && ~ps2_is_ext) begin	//E
+				dir1 <= (ps2_is_break) ? NONE : BOOST;
 			end else if (ps2_code == 8'h70 && ~ps2_is_ext) begin 	//NUM 0
 				dir2 <= (ps2_is_break) ? NONE : BOOST;
-
-			end else if (ps2_code == 8'h43 && ~ps2_is_ext) begin	//I
-				dir3 <= (ps2_is_break) ? NONE : UP;
-			end else if (ps2_code == 8'h42 && ~ps2_is_ext) begin	//K
-				dir3 <= (ps2_is_break) ? NONE : DOWN;
-			end else if (ps2_code == 8'h3B && ~ps2_is_ext) begin	//J
-				dir3 <= (ps2_is_break) ? NONE : LEFT;
-			end else if (ps2_code == 8'h4B && ~ps2_is_ext) begin	//L
-				dir3 <= (ps2_is_break) ? NONE : RIGHT;
 			end else if (ps2_code == 8'h44 && ~ps2_is_ext) begin	//O
 				dir3 <= (ps2_is_break) ? NONE : BOOST;
-
-			end else if (ps2_code == 8'h2C && ~ps2_is_ext) begin	//T
-				dir4 <= (ps2_is_break) ? NONE : UP;
-			end else if (ps2_code == 8'h34 && ~ps2_is_ext) begin	//G
-				dir4 <= (ps2_is_break) ? NONE : DOWN;
-			end else if (ps2_code == 8'h2B && ~ps2_is_ext) begin	//F
-				dir4 <= (ps2_is_break) ? NONE : LEFT;
-			end else if (ps2_code == 8'h33 && ~ps2_is_ext) begin	//H
-				dir4 <= (ps2_is_break) ? NONE : RIGHT;
 			end else if (ps2_code == 8'h35 && ~ps2_is_ext) begin	//Y
 				dir4 <= (ps2_is_break) ? NONE : BOOST;
-
-			end else if (ps2_code == 8'h1E && ~ps2_is_ext) begin	//2
-				reset_player_count <= 2;
-				reset_dirs;
-			end else if (ps2_code == 8'h26 && ~ps2_is_ext) begin	//3
-				reset_player_count <= 3;
-				reset_dirs;
-			end else if (ps2_code == 8'h25 && ~ps2_is_ext) begin	//4
-				reset_player_count <= 4;
-				reset_dirs;
-			end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin	//SPACE
-				reset_dirs;
 			end
 		end
 	end
