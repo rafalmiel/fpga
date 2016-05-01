@@ -16,13 +16,20 @@ module game_logic (
 	output [2:0] ram_write_data
 );
 
+// Number of master clock cycles to generate a tick
 localparam CLOCKS_BY_TICK = 100000;
+// Number of ticks to generate a normal speed movement
 localparam NORMAL_SPEED_COUNT = 12;
-localparam BOOST_SPEED_COUNT = 6;
+// Number of ticks to generate a boost speed movement
+localparam BOOST_SPEED_COUNT = 5;
 
-localparam BOOST_ACTIVE_COUNT = 96;
-localparam BOOST_COOLDOWN_COUNT = 256;
+// Number of boost ticks in which boost is active
+localparam BOOST_ACTIVE_COUNT = 128;
 
+// Number of boost ticks for the boost to cooldown
+localparam BOOST_COOLDOWN_COUNT = 384;
+
+// Player colors (RGB)
 localparam P1_COLOR = 3'b100;
 localparam P2_COLOR = 3'b010;
 localparam P3_COLOR = 3'b011;
@@ -34,23 +41,30 @@ localparam SCREEN_HEIGHT = 240;
 localparam SCREEN_MIDX = SCREEN_WIDTH/2 - 1;
 localparam SCREEN_MIDY = SCREEN_HEIGHT/2 - 1;
 
+// Players directions
 Dir dir[3:0];
+
+// Current game state
 State state = RESET;
 
+// Whether the border is displayed
+// If border is disabled, players can wrap on the screen edges
 reg is_border = 1'b1;
+
+// Was the toggle button pressed
 reg was_toggle_border = 1'b0;
 
+// Coordinates of the players
 reg [10:0] xp [3:0];
 reg [10:0] yp [3:0];
 
+// Coordinates used when clearing the screen and redrawing the border
 reg [10:0] xb = 0;
 reg [10:0] yb = 0;
 
+// Counter is increased in every posedge clock,
+// when CLOCKS_BY_TICK is reached, tick is generated
 reg [31:0] count = 0;
-
-reg write_enabled;
-reg [18:0] address;
-reg [2:0] write_data;
 
 reg tick = 1'b0;
 reg boost_tick = 1'b0;
@@ -66,39 +80,50 @@ reg reset_border_done = 1'b0;
 
 reg [3:0] check_data_done = 4'b0000;
 
+// Did player crash in current cycle
 reg [3:0] is_crash = 4'b0000;
 
+// Did player lost
 reg [3:0] is_lost = 4'b0000;
 
+// Was boost pressed
 reg [3:0] is_boost_pressed = 4'b0000;
+
+// Is boost active for player
 reg [3:0] is_boost = 4'b0000;
 
 reg [15:0] boost_active_countdown [3:0];
 reg [15:0] boost_cooldown_countdown [3:0];
 
+// Did player make a turn in this round
 reg [3:0] was_turn = 4'b0000;
 
+// We have separate counters for boost and normal speed.
+// This flag is set for a player when it's hit time to move depending whether he activated boost or not
 reg [3:0] is_player_turn = 4'b0000;
 
 reg reset_line_write = 1'b0;
 
+// Count of the players that are still in the game
 reg [2:0] player_count = 4;
+
+// Currnet player being processed
 reg [2:0] current_player;
 reg [2:0] player_color [3:0];
 
 typedef enum logic [1:0] {GL_READ_DATA=2'b00, GL_CHECK_DATA=2'b01, GL_UPDATE_POS=2'b10} GameLostState;
 GameLostState game_lost_state = GL_READ_DATA;
 
-assign ram_write_enabled = 
+assign ram_write_enabled =
 			  ((state == MOVE && ~is_crash[current_player] && is_player_turn[current_player]) || state == RESET || state == RESET_BORDER) ? 1'b1
 			: (state == GAME_LOST && game_lost_state == GL_UPDATE_POS && reset_line_write && ~is_lost[current_player]) ? 1'b1 : 1'b0;
 
-assign ram_address = 
-			  (state == CHECK || state == CHECK_DATA || state == MOVE) ? (320*yp[current_player] + xp[current_player])
-			: (state == RESET || state == RESET_BORDER || state == GAME_LOST) ? (320*yb + xb)
+assign ram_address =
+			  (state == CHECK || state == CHECK_DATA || state == MOVE) ? (SCREEN_WIDTH*yp[current_player] + xp[current_player])
+			: (state == RESET || state == RESET_BORDER || state == GAME_LOST) ? (SCREEN_WIDTH*yb + xb)
 			: 0;
 
-assign ram_write_data = 
+assign ram_write_data =
 			  (state == MOVE) ? player_color[current_player]
 			: (state == RESET_BORDER && is_border) ? 3'b111
 			: 3'b000;
@@ -167,6 +192,7 @@ end
 always @ (posedge clock) begin
 	if (count == CLOCKS_BY_TICK) begin
 		if (boost_move_countdown == 0) begin
+			// Generate boost tick
 			boost_tick = 1'b1;
 			boost_move_countdown <= BOOST_SPEED_COUNT;
 		end else begin
@@ -175,6 +201,7 @@ always @ (posedge clock) begin
 		end
 
 		if (normal_move_countdown == 0) begin
+			// Generate normal speed tick
 			tick = 1'b1;
 			normal_move_countdown <= NORMAL_SPEED_COUNT;
 		end else begin
@@ -202,19 +229,19 @@ always @ (posedge clock or posedge reset) begin
 					state <= RESET;
 			end
 
-			RESET_BORDER: begin
+			RESET_BORDER: begin //Redraw border if it is active
 				if (reset_border_done)
 					state <= RESET_POS;
 				else
 					state <= RESET_BORDER;
 			end
 
-			RESET_POS: begin
+			RESET_POS: begin //Reset player's positions
 				current_player <= 0;
 				state <= WAIT;
 			end
 
-			WAIT: begin
+			WAIT: begin //Wait for the normal speed or boost speed tick to be generated
 				if (player_count < 2)
 					state <= GAME_OVER;
 				else if (tick | boost_tick) begin
@@ -228,15 +255,15 @@ always @ (posedge clock or posedge reset) begin
 				end
 			end
 
-			UPDATE_POS: begin
+			UPDATE_POS: begin // Updates position of players
 				state <= CHECK;
 			end
 
-			CHECK: begin
+			CHECK: begin // Read pixel color from memory on player's head position to check for collision
 				state <= CHECK_DATA;
 			end
 
-			CHECK_DATA: begin
+			CHECK_DATA: begin //Check read data and set is_crash flag for player's that collided
 				if (check_data_done[current_player]) begin
 					if (current_player == 3) begin
 						current_player <= 0;
@@ -249,7 +276,7 @@ always @ (posedge clock or posedge reset) begin
 					state <= CHECK_DATA;
 			end
 
-			MOVE: begin
+			MOVE: begin //Advance players, if player had crashed, remove his line from the board
 				if (is_crash[current_player] && ~is_lost[current_player]) begin
 					state <= GAME_LOST;
 				end else begin
@@ -263,7 +290,7 @@ always @ (posedge clock or posedge reset) begin
 				end
 			end
 
-			GAME_LOST: begin
+			GAME_LOST: begin //Remove crashed player from the board
 				if (reset_done) begin
 					if (current_player == 3) begin
 						current_player <= 0;
@@ -277,7 +304,7 @@ always @ (posedge clock or posedge reset) begin
 				end
 			end
 
-			GAME_OVER: begin
+			GAME_OVER: begin //Less than 2 players left, pause the game and wait for the reset signal.Border can be toggled only in this state
 				if (was_toggle_border) begin
 					is_border <= ~is_border;
 					state <= RESET_BORDER;
@@ -288,6 +315,7 @@ always @ (posedge clock or posedge reset) begin
 	end
 end
 
+//Handle player's direction change and boost activation
 task handle_dir(
 	input Dir d,
 	input Dir rd,
@@ -301,17 +329,17 @@ task handle_dir(
 );
 
 	if (is_b && boost_tick) begin
-		if (boost_ac > 0) begin
+		if (boost_ac > 0) begin //Boost is active, decrease boost active counter
 			boost_ac <= boost_ac - 1;
 			is_b <= 1'b1;
-		end else begin
+		end else begin //Boost has finished, start cooldown period
 			boost_cc <= BOOST_COOLDOWN_COUNT;
 			is_b <= 1'b0;
 		end
-	end else if (boost_cc > 0 && boost_tick) begin
+	end else if (boost_cc > 0 && boost_tick) begin //Boost is cooling down, decrease cooldown counter
 		boost_cc <= boost_cc - 1;
 		is_b <= 1'b0;
-	end else if (is_b_press && boost_cc == 0 && boost_tick) begin
+	end else if (is_b_press && boost_cc == 0 && boost_tick) begin //Boost is activated
 		is_b <= 1'b1;
 		boost_ac <= BOOST_ACTIVE_COUNT;
 	end
@@ -319,16 +347,20 @@ task handle_dir(
 	if (state == RESET) begin
 		dres <= rd;
 		was_t <= 1'b0;
-	end else if (state == CHECK && current_player == 0 && ((is_b && is_boost_tick) || (~is_b && is_tick))) begin // State after updating the pos
+	end else if (state == CHECK && current_player == 0 && ((is_b && is_boost_tick) || (~is_b && is_tick))) begin 
+		//This check ensures players can make only one turn per cycle
+		//Prevents players crashing with themselves when making too quick turn around happening in the same cycle
 		was_t <= 1'b0;
 		is_b_press <= 1'b0;
 	end else if (~was_t && ((d == UP && dres != DOWN)
+		//Change player's direction
 		|| (d == DOWN && dres != UP)
 		|| (d == RIGHT && dres != LEFT)
 		|| (d == LEFT && dres != RIGHT))) begin
 		dres <= d;
 		was_t <= 1'b1;
 	end else if (d == BOOST) begin
+		// Boost key was pressed, save that to the reg to activate in the next move cycle
 		is_b_press <= 1'b1;
 	end
 endtask
@@ -365,6 +397,7 @@ always @ (posedge clock) begin
 	end
 end
 
+// Updates position of the player according to his direction
 task handle_update_pos(
 	input Dir dir,
 
@@ -398,7 +431,7 @@ endtask
 always @ (posedge clock) begin
 	if (state == UPDATE_POS) begin
 		for (integer i = 0; i < 4; i = i + 1) begin
-			if (is_player_turn[i])
+			if (is_player_turn[i]) // Update player's position only if it's his move tick (boost or normal speed)
 				handle_update_pos(dir[i], xp[i], yp[i]);
 		end
 	end
@@ -419,14 +452,14 @@ task handle_check_data(
 );
 
 	if (check_data_done == 1'b0) begin
-		if (ram_read_data != 3'b000 && is_his_turn) begin
+		if (ram_read_data != 3'b000 && is_his_turn) begin // Pixel is not black, player crashed
 			is_c <= 1'b1;
 			player_count <= player_count - 1;
 		end else
 			is_c <= 1'b0;
 
 		if (~is_l) begin
-			for (integer i = 0; i < 4; i = i + 1) begin
+			for (integer i = 0; i < 4; i = i + 1) begin //Check for collisions between players' heads
 				if (i != current_player && ~is_lost[i] && x == xp[i] && y == yp[i]) begin
 					is_c <= 1'b1;
 					player_count <= player_count - 1;
@@ -461,9 +494,9 @@ always @ (posedge clock) begin
 end
 
 always @ (posedge clock) begin
-	if (state == GAME_LOST) begin
+	if (state == GAME_LOST) begin // Remove lost player's line from the board
 		if (game_lost_state == GL_CHECK_DATA) begin
-			if (ram_read_data == player_color[current_player]) begin
+			if (ram_read_data == player_color[current_player]) begin // If pixel on current position equals to his color, paint it black
 				reset_line_write <= 1'b1;
 			end else begin
 				reset_line_write <= 1'b0;
@@ -509,6 +542,7 @@ always @ (posedge clock) begin
 		reset_done <= 1'b0;
 	end
 
+	// Repaint border (black or white, depending whether it's active)
 	if (state == RESET_BORDER && reset_border_done == 1'b0) begin
 		if (yb == 0 || yb == SCREEN_HEIGHT-1) begin
 			if (xb < SCREEN_WIDTH-1) begin
