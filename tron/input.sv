@@ -11,7 +11,8 @@ module kb_input(
 	output Dir d4,
 
 	output reset,
-	output [2:0] reset_player_count
+	output [2:0] reset_player_count,
+	output toggle_border
 );
 
 wire ps2_code_new;
@@ -27,6 +28,8 @@ Dir dir4 = NONE;
 
 reg [2:0] rpc = 4;
 
+reg toggle_border_int = 1'b0;
+
 assign d1 = dir1;
 assign d2 = dir2;
 assign d3 = dir3;
@@ -37,6 +40,8 @@ assign ps2_code_new_int = (^ps2_code_new_state) & ps2_code_new_state[0];
 assign reset = (ps2_code_new_int && (ps2_code == 8'h29 || ps2_code == 8'h1E || ps2_code == 8'h26 || ps2_code == 8'h25) && ps2_is_break != 1'b0);
 
 assign reset_player_count = rpc;
+
+assign toggle_border = toggle_border_int;
 
 always @ (posedge clock) begin
 	ps2_code_new_state = {ps2_code_new_state[0], ps2_code_new};
@@ -107,6 +112,8 @@ always @ (posedge clock) begin
 					reset_dirs;
 				end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin	//SPACE
 					reset_dirs;
+				end else if (ps2_code == 8'h32 && ~ps2_is_ext) begin //B
+					toggle_border_int <= 1'b1;
 				end
 			end
 
@@ -121,6 +128,9 @@ always @ (posedge clock) begin
 			end
 		end
 	end
+	
+	if (toggle_border_int)
+		toggle_border_int <= 1'b0;
 end
 
 ps2_keyboard ps2(

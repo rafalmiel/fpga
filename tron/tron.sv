@@ -41,6 +41,7 @@ Dir dir1;
 Dir dir2;
 Dir dir3;
 Dir dir4;
+wire toggle_border;
 
 assign vga_ram_address = (phys_x/2+phys_y/2*320);
 assign vga_ram_write_enabled = 1'b0;
@@ -62,7 +63,8 @@ kb_input kb(
 	.d4(dir4),
 
 	.reset(reset),
-	.reset_player_count(reset_player_count)
+	.reset_player_count(reset_player_count),
+	.toggle_border(toggle_border)
 );
 
 game_logic log (
@@ -73,6 +75,7 @@ game_logic log (
 	.d2(dir2),
 	.d3(dir3),
 	.d4(dir4),
+	.toggle_border(toggle_border),
 	.ram_address(logic_ram_address),
 	.ram_read_data(logic_ram_read_data),
 	.ram_write_enabled(logic_ram_write_enabled),

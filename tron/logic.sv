@@ -8,6 +8,7 @@ module game_logic (
 	input Dir d2,
 	input Dir d3,
 	input Dir d4,
+	input toggle_border,
 
 	output [18:0] ram_address,
 	input [2:0] ram_read_data,
@@ -19,6 +20,7 @@ Dir dir[3:0];
 State state = RESET;
 
 reg is_border = 1'b1;
+reg was_toggle_border = 1'b0;
 
 reg [10:0] xp [3:0];
 reg [10:0] yp [3:0];
@@ -141,6 +143,15 @@ initial begin
 end
 
 always @ (posedge clock) begin
+	if (toggle_border)
+		if (state == GAME_OVER)
+			was_toggle_border <= 1'b1;
+	
+	if (was_toggle_border && state == RESET_POS)
+		was_toggle_border <= 1'b0;
+end
+
+always @ (posedge clock) begin
 	if (count == 250000) begin
 		if (boost_move_countdown == 0) begin
 			boost_tick = 1'b1;
@@ -254,7 +265,11 @@ always @ (posedge clock or posedge reset) begin
 			end
 
 			GAME_OVER: begin
-				state <= GAME_OVER;
+				if (was_toggle_border) begin
+					is_border <= ~is_border;
+					state <= RESET_BORDER;
+				end else
+					state <= GAME_OVER;
 			end
 		endcase
 	end
