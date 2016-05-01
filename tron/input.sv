@@ -29,6 +29,7 @@ Dir dir4 = NONE;
 reg [2:0] rpc = 4;
 
 reg toggle_border_int = 1'b0;
+reg reset_int = 1'b0;
 
 assign d1 = dir1;
 assign d2 = dir2;
@@ -37,7 +38,7 @@ assign d4 = dir4;
 
 assign ps2_code_new_int = (^ps2_code_new_state) & ps2_code_new_state[0];
 
-assign reset = (ps2_code_new_int && (ps2_code == 8'h29 || ps2_code == 8'h1E || ps2_code == 8'h26 || ps2_code == 8'h25) && ps2_is_break != 1'b0);
+assign reset = reset_int;
 
 assign reset_player_count = rpc;
 
@@ -102,15 +103,19 @@ always @ (posedge clock) begin
 					dir4 <= RIGHT;
 
 				end else if (ps2_code == 8'h1E && ~ps2_is_ext) begin	//2
+					reset_int <= 1'b1;
 					rpc <= 2;
 					reset_dirs;
 				end else if (ps2_code == 8'h26 && ~ps2_is_ext) begin	//3
+					reset_int <= 1'b1;
 					rpc <= 3;
 					reset_dirs;
 				end else if (ps2_code == 8'h25 && ~ps2_is_ext) begin	//4
+					reset_int <= 1'b1;
 					rpc <= 4;
 					reset_dirs;
 				end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin	//SPACE
+					reset_int <= 1'b1;
 					reset_dirs;
 				end else if (ps2_code == 8'h32 && ~ps2_is_ext) begin //B
 					toggle_border_int <= 1'b1;
@@ -131,6 +136,9 @@ always @ (posedge clock) begin
 	
 	if (toggle_border_int)
 		toggle_border_int <= 1'b0;
+
+	if (reset_int)
+		reset_int <= 1'b0;
 end
 
 ps2_keyboard ps2(

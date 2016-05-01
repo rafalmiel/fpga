@@ -146,7 +146,7 @@ always @ (posedge clock) begin
 	if (toggle_border)
 		if (state == GAME_OVER)
 			was_toggle_border <= 1'b1;
-	
+
 	if (was_toggle_border && state == RESET_POS)
 		was_toggle_border <= 1'b0;
 end
