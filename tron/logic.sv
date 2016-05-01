@@ -16,6 +16,24 @@ module game_logic (
 	output [2:0] ram_write_data
 );
 
+localparam CLOCKS_BY_TICK = 100000;
+localparam NORMAL_SPEED_COUNT = 12;
+localparam BOOST_SPEED_COUNT = 6;
+
+localparam BOOST_ACTIVE_COUNT = 96;
+localparam BOOST_COOLDOWN_COUNT = 256;
+
+localparam P1_COLOR = 3'b100;
+localparam P2_COLOR = 3'b010;
+localparam P3_COLOR = 3'b011;
+localparam P4_COLOR = 3'b110;
+
+localparam SCREEN_WIDTH = 320;
+localparam SCREEN_HEIGHT = 240;
+
+localparam SCREEN_MIDX = SCREEN_WIDTH/2 - 1;
+localparam SCREEN_MIDY = SCREEN_HEIGHT/2 - 1;
+
 Dir dir[3:0];
 State state = RESET;
 
@@ -40,8 +58,8 @@ reg boost_tick = 1'b0;
 reg is_tick = 1'b0;
 reg is_boost_tick = 1'b0;
 
-reg [2:0] normal_move_countdown = 5;
-reg [2:0] boost_move_countdown = 2;
+reg [7:0] normal_move_countdown = NORMAL_SPEED_COUNT;
+reg [7:0] boost_move_countdown = BOOST_SPEED_COUNT;
 
 reg reset_done = 1'b0;
 reg reset_border_done = 1'b0;
@@ -71,30 +89,25 @@ reg [2:0] player_color [3:0];
 typedef enum logic [1:0] {GL_READ_DATA=2'b00, GL_CHECK_DATA=2'b01, GL_UPDATE_POS=2'b10} GameLostState;
 GameLostState game_lost_state = GL_READ_DATA;
 
-assign ram_write_enabled = write_enabled;
-assign ram_address = address;
-assign ram_write_data = write_data;
-
-always @ (*) begin
-	integer i;
-	for (i = 0; i < 4; i = i + 1) begin
-		is_player_turn[i] = ~is_lost[i] & ((is_boost[i] & is_boost_tick) | (~is_boost[i] & is_tick));
-	end
-end
-
-always write_enabled =
+assign ram_write_enabled = 
 			  ((state == MOVE && ~is_crash[current_player] && is_player_turn[current_player]) || state == RESET || state == RESET_BORDER) ? 1'b1
 			: (state == GAME_LOST && game_lost_state == GL_UPDATE_POS && reset_line_write && ~is_lost[current_player]) ? 1'b1 : 1'b0;
 
-always address =
+assign ram_address = 
 			  (state == CHECK || state == CHECK_DATA || state == MOVE) ? (320*yp[current_player] + xp[current_player])
 			: (state == RESET || state == RESET_BORDER || state == GAME_LOST) ? (320*yb + xb)
 			: 0;
 
-always write_data =
+assign ram_write_data = 
 			  (state == MOVE) ? player_color[current_player]
 			: (state == RESET_BORDER && is_border) ? 3'b111
 			: 3'b000;
+
+always @ (*) begin
+	for (integer i = 0; i < 4; i = i + 1) begin
+		is_player_turn[i] = ~is_lost[i] & ((is_boost[i] & is_boost_tick) | (~is_boost[i] & is_tick));
+	end
+end
 
 task reset_dirs;
 	dir[0] <= RIGHT;
@@ -104,17 +117,17 @@ task reset_dirs;
 endtask
 
 task reset_player_pos;
-	xp[0] <= 20;
-	yp[0] <= 120;
+	xp[0] <= SCREEN_MIDX - 80;
+	yp[0] <= SCREEN_MIDY;
 
-	xp[1] <= 299;
-	yp[1] <= 120;
+	xp[1] <= SCREEN_MIDX + 80;
+	yp[1] <= SCREEN_MIDY;
 
-	xp[2] <= 160;
-	yp[2] <= 20;
+	xp[2] <= SCREEN_MIDX;
+	yp[2] <= SCREEN_MIDY - 80;
 
-	xp[3] <= 160;
-	yp[3] <= 219;
+	xp[3] <= SCREEN_MIDX;
+	yp[3] <= SCREEN_MIDY + 80;
 endtask
 
 task reset_boost(input [2:0] i);
@@ -136,10 +149,10 @@ initial begin
 
 	current_player <= 0;
 
-	player_color[0] <= 3'b100;
-	player_color[1] <= 3'b010;
-	player_color[2] <= 3'b011;
-	player_color[3] <= 3'b110;
+	player_color[0] <= P1_COLOR;
+	player_color[1] <= P2_COLOR;
+	player_color[2] <= P3_COLOR;
+	player_color[3] <= P4_COLOR;
 end
 
 always @ (posedge clock) begin
@@ -152,10 +165,10 @@ always @ (posedge clock) begin
 end
 
 always @ (posedge clock) begin
-	if (count == 250000) begin
+	if (count == CLOCKS_BY_TICK) begin
 		if (boost_move_countdown == 0) begin
 			boost_tick = 1'b1;
-			boost_move_countdown <= 3;
+			boost_move_countdown <= BOOST_SPEED_COUNT;
 		end else begin
 			boost_tick <= 1'b0;
 			boost_move_countdown <= boost_move_countdown - 1'b1;
@@ -163,7 +176,7 @@ always @ (posedge clock) begin
 
 		if (normal_move_countdown == 0) begin
 			tick = 1'b1;
-			normal_move_countdown <= 5;
+			normal_move_countdown <= NORMAL_SPEED_COUNT;
 		end else begin
 			tick <= 1'b0;
 			normal_move_countdown <= normal_move_countdown - 1'b1;
@@ -292,7 +305,7 @@ task handle_dir(
 			boost_ac <= boost_ac - 1;
 			is_b <= 1'b1;
 		end else begin
-			boost_cc <= 256;
+			boost_cc <= BOOST_COOLDOWN_COUNT;
 			is_b <= 1'b0;
 		end
 	end else if (boost_cc > 0 && boost_tick) begin
@@ -300,7 +313,7 @@ task handle_dir(
 		is_b <= 1'b0;
 	end else if (is_b_press && boost_cc == 0 && boost_tick) begin
 		is_b <= 1'b1;
-		boost_ac <= 96;
+		boost_ac <= BOOST_ACTIVE_COUNT;
 	end
 
 	if (state == RESET) begin
@@ -360,22 +373,22 @@ task handle_update_pos(
 );
 	if (dir == UP) begin
 		if (~is_border && y == 0)
-			y <= 239;
+			y <= SCREEN_HEIGHT-1;
 		else
 			y <= y - 1;
 	end else if (dir == RIGHT) begin
-		if (~is_border && x == 319)
+		if (~is_border && x == SCREEN_WIDTH-1)
 			x <= 0;
 		else
 			x <= x + 1;
 	end else if (dir == DOWN) begin
-		if (~is_border && y == 239)
+		if (~is_border && y == SCREEN_HEIGHT-1)
 			y <= 0;
 		else
 			y <= y + 1;
 	end else begin
 		if (~is_border && x == 0)
-			x <= 319;
+			x <= SCREEN_WIDTH-1;
 		else
 			x <= x - 1;
 	end
@@ -413,8 +426,7 @@ task handle_check_data(
 			is_c <= 1'b0;
 
 		if (~is_l) begin
-			integer i;
-			for (i = 0; i < 4; i = i + 1) begin
+			for (integer i = 0; i < 4; i = i + 1) begin
 				if (i != current_player && ~is_lost[i] && x == xp[i] && y == yp[i]) begin
 					is_c <= 1'b1;
 					player_count <= player_count - 1;
@@ -464,9 +476,9 @@ always @ (posedge clock) begin
 
 	if ((state == RESET || (state == GAME_LOST && game_lost_state == GL_UPDATE_POS))
 		&& reset_done == 1'b0) begin
-		if (xb == 319) begin
+		if (xb == SCREEN_WIDTH-1) begin
 			xb <= 0;
-			if (yb == 239) begin
+			if (yb == SCREEN_HEIGHT-1) begin
 				yb <= 0;
 				game_lost_state <= GL_READ_DATA;
 				reset_line_write <= 1'b0;
@@ -498,8 +510,8 @@ always @ (posedge clock) begin
 	end
 
 	if (state == RESET_BORDER && reset_border_done == 1'b0) begin
-		if (yb == 0 || yb == 239) begin
-			if (xb < 319) begin
+		if (yb == 0 || yb == SCREEN_HEIGHT-1) begin
+			if (xb < SCREEN_WIDTH-1) begin
 				xb <= xb + 1;
 			end else begin
 				if (yb == 0) begin
@@ -513,7 +525,7 @@ always @ (posedge clock) begin
 			end
 		end else begin
 			if (xb == 0)
-				xb <= 319;
+				xb <= SCREEN_WIDTH-1;
 			else begin
 				xb <= 0;
 				yb <= yb + 1;
