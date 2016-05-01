@@ -31,121 +31,38 @@ wire logic_ram_write_enabled;
 wire [2:0] logic_ram_read_data;
 wire [2:0] logic_ram_write_data;
 
-wire ps2_code_new;
-reg [1:0] ps2_code_new_state = 2'b00;
-wire ps2_code_new_int;
-reg ps2_is_break;
-reg ps2_is_ext;
-wire [7:0] ps2_code;
-Dir dir1 = NONE;
-Dir dir2 = NONE;
-Dir dir3 = NONE;
-Dir dir4 = NONE;
-
 assign VGA_RED = is_drawing & vga_ram_read_data[2];
 assign VGA_GREEN = is_drawing & vga_ram_read_data[1];
 assign VGA_BLUE = is_drawing & vga_ram_read_data[0];
 
 wire reset;
-
-reg [2:0] reset_player_count = 4;
-
-assign ps2_code_new_int = (^ps2_code_new_state) & ps2_code_new_state[0];
+wire [2:0] reset_player_count;
+Dir dir1;
+Dir dir2;
+Dir dir3;
+Dir dir4;
 
 assign vga_ram_address = (phys_x/2+phys_y/2*320);
 assign vga_ram_write_enabled = 1'b0;
-
-assign reset = (ps2_code_new_int && (ps2_code == 8'h29 || ps2_code == 8'h1E || ps2_code == 8'h26 || ps2_code == 8'h25) && ps2_is_break != 1'b0);
-
-always @ (posedge CLOCK_50) begin
-	ps2_code_new_state = {ps2_code_new_state[0], ps2_code_new};
-end
-
-task reset_dirs;
-	dir1 <= NONE;
-	dir2 <= NONE;
-	dir3 <= NONE;
-	dir4 <= NONE;
-endtask
-
-always @ (posedge CLOCK_50) begin
-	if (ps2_code_new_int) begin
-		if (ps2_code == 8'hF0) begin
-			ps2_is_break <= 1'b1;
-		end else if (ps2_code == 8'hE0) begin
-			ps2_is_ext <= 1'b1;
-		end else begin
-			ps2_is_ext <= 1'b0;
-			ps2_is_break <= 1'b0;
-
-			if (~ps2_is_break) begin
-				if (ps2_code == 8'h1D && ~ps2_is_ext) begin				//W
-					dir1 <= UP;
-				end else if (ps2_code == 8'h1B && ~ps2_is_ext) begin	//S
-					dir1 <= DOWN;
-				end else if (ps2_code == 8'h1C && ~ps2_is_ext) begin	//A
-					dir1 <= LEFT;
-				end else if (ps2_code == 8'h23 && ~ps2_is_ext) begin	//D
-					dir1 <= RIGHT;
-
-				end else if (ps2_code == 8'h75 && ps2_is_ext) begin	//ARROR UP
-					dir2 <= UP;
-				end else if (ps2_code == 8'h72 && ps2_is_ext) begin   //ARROW DOWN
-					dir2 <= DOWN;
-				end else if (ps2_code == 8'h6B && ps2_is_ext) begin	//ARROW LEFT
-					dir2 <= LEFT;
-				end else if (ps2_code == 8'h74 && ps2_is_ext) begin 	//ARROW RIGHT
-					dir2 <= RIGHT;
-
-				end else if (ps2_code == 8'h43 && ~ps2_is_ext) begin	//I
-					dir3 <= UP;
-				end else if (ps2_code == 8'h42 && ~ps2_is_ext) begin	//K
-					dir3 <= DOWN;
-				end else if (ps2_code == 8'h3B && ~ps2_is_ext) begin	//J
-					dir3 <= LEFT;
-				end else if (ps2_code == 8'h4B && ~ps2_is_ext) begin	//L
-					dir3 <= RIGHT;
-
-				end else if (ps2_code == 8'h2C && ~ps2_is_ext) begin	//T
-					dir4 <= UP;
-				end else if (ps2_code == 8'h34 && ~ps2_is_ext) begin	//G
-					dir4 <= DOWN;
-				end else if (ps2_code == 8'h2B && ~ps2_is_ext) begin	//F
-					dir4 <= LEFT;
-				end else if (ps2_code == 8'h33 && ~ps2_is_ext) begin	//H
-					dir4 <= RIGHT;
-
-				end else if (ps2_code == 8'h1E && ~ps2_is_ext) begin	//2
-					reset_player_count <= 2;
-					reset_dirs;
-				end else if (ps2_code == 8'h26 && ~ps2_is_ext) begin	//3
-					reset_player_count <= 3;
-					reset_dirs;
-				end else if (ps2_code == 8'h25 && ~ps2_is_ext) begin	//4
-					reset_player_count <= 4;
-					reset_dirs;
-				end else if (ps2_code == 8'h29 && ~ps2_is_ext) begin	//SPACE
-					reset_dirs;
-				end
-			end
-
-			if (ps2_code == 8'h24 && ~ps2_is_ext) begin	//E
-				dir1 <= (ps2_is_break) ? NONE : BOOST;
-			end else if (ps2_code == 8'h70 && ~ps2_is_ext) begin 	//NUM 0
-				dir2 <= (ps2_is_break) ? NONE : BOOST;
-			end else if (ps2_code == 8'h44 && ~ps2_is_ext) begin	//O
-				dir3 <= (ps2_is_break) ? NONE : BOOST;
-			end else if (ps2_code == 8'h35 && ~ps2_is_ext) begin	//Y
-				dir4 <= (ps2_is_break) ? NONE : BOOST;
-			end
-		end
-	end
-end
 
 pll p(
 	.inclk0(CLOCK_50),
 	.c0(ram_clock),
 	.c1(vga_clock)
+);
+
+kb_input kb(
+	.clock(CLOCK_50),
+	.ps2_clock(ps2_clock),
+	.ps2_data(ps2_data),
+
+	.d1(dir1),
+	.d2(dir2),
+	.d3(dir3),
+	.d4(dir4),
+
+	.reset(reset),
+	.reset_player_count(reset_player_count)
 );
 
 game_logic log (
@@ -183,14 +100,6 @@ vga_verilog vga(
 	.VGA_HS(VGA_HS),
 	.VGA_VS(VGA_VS),
 	.IS_DRAWING(is_drawing)
-);
-
-ps2_keyboard ps2(
-	.clock(CLOCK_50),
-	.ps2_clock(ps2_clock),
-	.ps2_data(ps2_data),
-	.ps2_code_new(ps2_code_new),
-	.ps2_code(ps2_code)
 );
 
 endmodule
