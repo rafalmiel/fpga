@@ -352,7 +352,7 @@ always @ (posedge clock) begin
 	end
 end
 
-task automatic handle_update_pos(
+task handle_update_pos(
 	input Dir dir,
 
 	inout [10:0] x,
@@ -395,7 +395,7 @@ always @ (posedge clock) begin
 	end
 end
 
-task automatic handle_check_data(
+task handle_check_data(
 	input [10:0] x,
 	input [10:0] y,
 	input is_l,
@@ -497,7 +497,7 @@ always @ (posedge clock) begin
 		reset_done <= 1'b0;
 	end
 
-	if (state == RESET_BORDER && reset_done == 1'b0) begin
+	if (state == RESET_BORDER && reset_border_done == 1'b0) begin
 		if (yb == 0 || yb == 239) begin
 			if (xb < 319) begin
 				xb <= xb + 1;

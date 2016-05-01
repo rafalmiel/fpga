@@ -4,13 +4,11 @@ module tron (
 	input CLOCK_50,
 	input ps2_clock,
 	input ps2_data,
-	input btn,
 	output VGA_RED,
 	output VGA_GREEN,
 	output VGA_BLUE,
 	output VGA_HS,
-	output VGA_VS,
-	output led
+	output VGA_VS
 );
 
 // CLOCKS
